@@ -1,0 +1,19 @@
+{
+  "name": "fvl-fall-2026-draft",
+  "version": "1.0.0",
+  "description": "FVL Fall 2026 auction draft board — Express + MongoDB + Socket.io, deployable to Render.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.0",
+    "socket.io": "^4.7.5"
+  }
+}

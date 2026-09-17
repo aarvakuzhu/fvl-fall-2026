@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: fvl-fall-2026-draft
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_URI
+        sync: false   # set manually in the Render dashboard (or a Secret) — never commit real credentials
+      - key: NODE_VERSION
+        value: 20.11.1
