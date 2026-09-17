@@ -1059,7 +1059,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
      ============================================================ -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const BUDGET        = 3200;
+const BUDGET        = 4200; // total team budget, captain's cost is deducted from this (not on top of it)
 
 // Per-captain budget overrides (name must match CAPTAIN_NAMES exactly).
 // TODO(Fall 2026): add any captains who get a different starting budget.
@@ -1120,6 +1120,20 @@ const CAPTAIN_PICS = {
   // 'Captain One': 'https://drive.google.com/thumbnail?id=XXXX&sz=w400',
 };
 
+// TODO(Fall 2026): each captain's own player tier (must be a key in TIERS
+// above). Any captain not listed here defaults to 'Biryani' (the safest/
+// most expensive assumption) until you fill this in.
+const CAPTAIN_TIERS = {
+  // 'Captain One': 'Samosa',
+};
+
+const CAPTAIN_PREMIUM = 0.25; // captains cost their tier's base price + this % premium, deducted from their own team's budget
+
+function captainCost(tier) {
+  const base = (TIERS[tier] || TIERS['Biryani']).base;
+  return Math.round(base * (1 + CAPTAIN_PREMIUM));
+}
+
 // TODO(Fall 2026): fill in the auction player pool. tier must be one of
 // the keys in TIERS above (Biryani / Samosa / Chai / Biscuit / Gatorade).
 // pic, skills and remarks are optional.
@@ -1153,18 +1167,21 @@ function generatePlayers() {
 
   for (let i = 0; i < TEAM_COUNT; i++) {
     if (!CAPTAIN_NAMES[i]) continue; // no captain filled in yet for this slot — leave the team empty rather than crash
+    const capName  = CAPTAIN_NAMES[i];
+    const capTier  = CAPTAIN_TIERS[capName] || 'Biryani';
+    const capPrice = captainCost(capTier);
     players.push({
       id:          idx,
-      name:        CAPTAIN_NAMES[i],
-      tier:        'D',
-      base:        0,
-      currentBase: 0,
+      name:        capName,
+      tier:        capTier,
+      base:        TIERS[capTier].base,
+      currentBase: TIERS[capTier].base,
       isCaptain:   true,
       drafted:     true,
       draftedBy:   i,
-      finalPrice:  0,
+      finalPrice:  capPrice,
       unsold:      false,
-      pic:         CAPTAIN_PICS[CAPTAIN_NAMES[i]] || '',
+      pic:         CAPTAIN_PICS[capName] || '',
     });
     idx++;
   }
@@ -1183,15 +1200,15 @@ function generateTeams(players) {
       id:      i,
       name:    defaultName,
       budget:  captain ? (TEAM_BUDGETS[captain.name] || BUDGET) : BUDGET,
-      spent:   0,
+      spent:   captain ? captain.finalPrice : 0,
       roster:  captain ? [{
         playerId:   captain.id,
         playerName: captain.name,
-        tier:       'D',
-        price:      0,
+        tier:       captain.tier,
+        price:      captain.finalPrice,
         isCaptain:  true,
       }] : [],
-      biriyaniCount: 0,
+      biriyaniCount: (captain && captain.tier === 'Biryani') ? 1 : 0,
     };
   });
 }
