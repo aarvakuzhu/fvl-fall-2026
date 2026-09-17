@@ -2943,7 +2943,7 @@ function printRosterList() {
       '<div class="hdr-right">' +
         totalPlayers + ' auctionable players<br>' +
         biryaniCount + ' Biryani &nbsp;·&nbsp; Max $1,200 bid<br>' +
-        'Budget per team: $3,200<br>' +
+        'Budget per team: $' + BUDGET.toLocaleString() + '<br>' +
         '<span style="color:#aaa;">Printed ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + '</span>' +
       '</div>' +
     '</div>' +
@@ -3331,8 +3331,8 @@ function showRules() {
       '<div class="rules-grid">',
         '<div class="rules-card highlight">',
           '<div class="rules-card-label">Starting Budget</div>',
-          '<div class="rules-card-value">$3,200</div>',
-          '<div class="rules-card-sub">Per team &mdash; use it wisely</div>',
+          '<div class="rules-card-value">$4,200</div>',
+          '<div class="rules-card-sub">Per team &mdash; captain\'s cost comes out of this</div>',
         '</div>',
         '<div class="rules-card highlight">',
           '<div class="rules-card-label">Roster Size</div>',
@@ -3409,8 +3409,8 @@ function showRules() {
     '<div class="rules-section">',
       '<div class="rules-section-title">Budget Rules &amp; Limits</div>',
       '<ul class="rules-list">',
-        '<li class="gold"><strong>Starting budget: $3,200 per team.</strong> This is your total spending power across all 5 rounds.',
-          '<span class="ex">Example: Team A spends $800 on a Biryani, $650 on a Samosa, and $475 on a Chai &mdash; they have $1,275 left for 2 more picks.</span>',
+        '<li class="gold"><strong>Starting budget: $4,200 per team.</strong> This is your total spending power &mdash; your captain\'s cost is deducted from it up front, and the rest covers all 5 draft rounds.',
+          '<span class="ex">Example: A Biryani-tier captain costs $1,000 (see Rosters &amp; Captains below), leaving $3,200. Spend $650 on a Samosa and $475 on a Chai &mdash; $2,075 left for 3 more picks.</span>',
         '</li>',
         '<li class="warn"><strong>Reserve requirement:</strong> You cannot bid if doing so would leave you unable to afford your remaining open roster slots at minimum base prices.',
           '<span class="ex">With 3 slots left and $900 budget: reserve needed = $925 (2 Biscuit + 1 Gatorade). Max you can bid = $900 \u2212 $925 = blocked. You cannot bid.</span>',
@@ -3443,11 +3443,12 @@ function showRules() {
     '<div class="rules-section">',
       '<div class="rules-section-title">Rosters &amp; Captains</div>',
       '<ul class="rules-list">',
-        '<li><strong>16 teams</strong> each captained by a pre-selected player. Captains are free and do not count toward your budget.',
+        '<li><strong>16 teams</strong> each captained by a pre-selected player. A captain\'s cost is <strong>their tier\'s base price + a 25% premium</strong>, deducted from their own team\'s $4,200 budget before the auction begins.',
+          '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($475 base) costs $475 + 25% = $594.</span>',
         '</li>',
         '<li><strong>Each team drafts 5 players</strong> (1 captain + 5 = 6 total on your roster).',
         '</li>',
-        '<li class="gold"><strong>Biryani cap:</strong> Maximum <strong>1 Biryani player per team</strong>. If you already have a Biryani player, you are blocked from bidding on any future Biryani player.',
+        '<li class="gold"><strong>Biryani cap:</strong> Maximum <strong>1 Biryani player per team</strong>, counting a Biryani-tier captain if you have one. If your captain is Biryani-tier, or you\'ve already drafted a Biryani player, you are blocked from bidding on any Biryani player.',
           '<span class="ex">Example: Team already drafted Adit Timbadia (Biryani). They are now locked out of all other Biryani auctions.</span>',
         '</li>',
         '<li><strong>Roster full:</strong> Once you have 5 drafted picks, your bid buttons are disabled for all remaining players.',
