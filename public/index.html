@@ -2556,7 +2556,7 @@ function finalizeTiebreaker(teamId) {
                    ? JSON.parse(JSON.stringify(state.auction.roundStateSnapshot))
                    : JSON.parse(JSON.stringify(state.round)),
   });
-  if (state.undoStack.length > 1) state.undoStack.shift();
+  // (unlimited undo history — every drafted pick stays on the stack)
 
   player.drafted    = true;
   player.draftedBy  = team.id;
@@ -2734,7 +2734,7 @@ function finalizeAuction() {
                    ? JSON.parse(JSON.stringify(state.auction.roundStateSnapshot))
                    : JSON.parse(JSON.stringify(state.round)),
   });
-  if (state.undoStack.length > 1) state.undoStack.shift();
+  // (unlimited undo history — every drafted pick stays on the stack)
 
   player.drafted    = true;
   player.draftedBy  = team.id;
@@ -3694,7 +3694,7 @@ function showRules() {
     '<div class="rules-section">',
       '<div class="rules-section-title">Undo &amp; Fair Play</div>',
       '<ul class="rules-list">',
-        '<li class="teal"><strong>Undo last pick:</strong> The commissioner can undo the most recent auction result before the next player is nominated. This is a one-level undo only &mdash; you cannot undo multiple picks at once.',
+        '<li class="teal"><strong>Undo:</strong> The commissioner can undo the most recent auction result before the next player is nominated. Clicking Undo repeatedly walks back through as many previous picks as needed, most recent first.',
           '<span class="ex">Use sparingly &mdash; only for genuine errors, not buyer\'s remorse!</span>',
         '</li>',
         '<li><strong>All bids are binding</strong> once the timer expires and the award is confirmed.</li>',
