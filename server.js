@@ -34,6 +34,15 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  // Clients join the room for whichever draft they're viewing (the official
+  // draft, or their own "sim-<name>" practice sandbox) so state broadcasts
+  // stay scoped to that draft instead of reaching every connected client.
+  socket.on('join', (draftId) => {
+    if (typeof draftId !== 'string' || !draftId) return;
+    socket.join(draftId);
+  });
+
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 

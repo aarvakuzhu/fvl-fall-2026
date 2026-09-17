@@ -45,7 +45,35 @@ Before running a real draft, edit `public/index.html`:
 
 Each is marked with a `TODO(Fall 2026)` comment in the file.
 
-## Local development
+## Practice mode vs. the official auction
+
+The app opens on a mode-select screen with two paths:
+
+- **🎮 Practice / Simulate** — anyone can enter, no password. They pick their
+  name (from the captain dropdown, or type any name) and get their own
+  private draft sandbox, stored as its own MongoDB document (`draftId:
+  "sim-<slugified-name>"`). It uses the same captains/players/budget config
+  as the real thing, so it's a genuine dry run — but it's fully separate
+  from the official draft, and picking the same name again later resumes
+  exactly where they left off.
+- **🔒 Tournament Director** — password-protected (see `TD_PASSWORD` below).
+  This is the one official draft (`draftId: "fvl-fall-2026"`). The server
+  rejects any write to that draftId without a valid TD session, so only
+  the person with the password can actually run the final auction; practice
+  sandboxes are always open since they don't touch shared state.
+
+Socket.io broadcasts are scoped per `draftId` (a "room" per draft), so one
+captain's practice session never sends updates to anyone else's screen.
+
+## Environment variables
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `MONGODB_URI` | Yes | Atlas connection string |
+| `TD_PASSWORD` | No | Tournament Director password. Defaults to `FVL-Director-2026` if unset — change this before the real auction. |
+| `PORT` | No | Local dev only; Render sets this automatically |
+
+
 
 ```bash
 npm install

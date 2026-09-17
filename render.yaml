@@ -8,5 +8,7 @@ services:
     envVars:
       - key: MONGODB_URI
         sync: false   # set manually in the Render dashboard (or a Secret) — never commit real credentials
+      - key: TD_PASSWORD
+        sync: false   # Tournament Director password — set manually; defaults to FVL-Director-2026 if left unset
       - key: NODE_VERSION
         value: 20.11.1

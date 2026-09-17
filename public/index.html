@@ -68,6 +68,29 @@
   transition:background 0.15s,transform 0.15s;flex-shrink:0;
 }
 #theme-toggle:hover{background:var(--surface3);transform:scale(1.06)}
+
+/* MODE GATE */
+#mode-gate{position:fixed;inset:0;z-index:3000;background:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px}
+.gate-box{width:100%;max-width:420px}
+.gate-panel{display:flex;flex-direction:column;gap:12px}
+.gate-choice-btn{display:flex;align-items:center;gap:14px;text-align:left;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:18px;cursor:pointer;color:var(--text);transition:border-color 0.15s,background 0.15s}
+.gate-choice-btn:hover{border-color:var(--gold);background:var(--surface2)}
+.gate-choice-emoji{font-size:1.8rem;flex-shrink:0}
+.gate-choice-title{display:block;font-family:var(--fu);font-weight:700;font-size:1.02rem;letter-spacing:0.5px}
+.gate-choice-sub{display:block;font-size:0.78rem;color:var(--text2);margin-top:3px;line-height:1.4}
+.gate-label{font-family:var(--fu);font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.gate-input{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;color:var(--text);font-family:var(--fb);font-size:0.95rem}
+.gate-input:focus{outline:none;border-color:var(--gold)}
+.gate-or{text-align:center;font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:2px 0}
+.gate-error{color:var(--danger);font-size:0.82rem;font-weight:600}
+
+/* MODE BANNER (header) */
+.mode-banner{display:flex;align-items:center;gap:8px;font-family:var(--fu);font-size:0.72rem;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-right:8px}
+.mode-banner .mode-pill{padding:3px 9px;border-radius:20px;font-weight:700}
+.mode-banner .mode-pill.td{background:rgba(240,48,80,0.15);color:var(--danger);border:1px solid rgba(240,48,80,0.35)}
+.mode-banner .mode-pill.practice{background:rgba(34,214,138,0.12);color:var(--success);border:1px solid rgba(34,214,138,0.3)}
+.mode-banner button{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-family:var(--fu);font-size:0.7rem;letter-spacing:1px}
+.mode-banner button:hover{color:var(--text)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
 body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -687,10 +710,56 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 <body>
 
 <!-- ============================================================
+     MODE GATE — choose Practice (any captain, name-based, no
+     password) or Tournament Director (password, official auction).
+     Nothing else on the page runs until this resolves.
+     ============================================================ -->
+<div id="mode-gate">
+  <div class="gate-box">
+    <div class="logo" style="text-align:center;margin-bottom:22px;">FVL<span>Fall 2026 Draft</span></div>
+
+    <div id="gate-choice" class="gate-panel">
+      <button class="gate-choice-btn" id="gate-btn-practice">
+        <span class="gate-choice-emoji">🎮</span>
+        <span>
+          <span class="gate-choice-title">Practice / Simulate</span>
+          <span class="gate-choice-sub">Try the draft yourself — your picks are saved under your name, just for you.</span>
+        </span>
+      </button>
+      <button class="gate-choice-btn" id="gate-btn-td">
+        <span class="gate-choice-emoji">🔒</span>
+        <span>
+          <span class="gate-choice-title">Tournament Director</span>
+          <span class="gate-choice-sub">Password-protected. Runs the one official, final auction.</span>
+        </span>
+      </button>
+    </div>
+
+    <div id="gate-practice-form" class="gate-panel" style="display:none;">
+      <label class="gate-label">Choose your name</label>
+      <select id="gate-captain-select" class="gate-input"></select>
+      <div class="gate-or">or type a name</div>
+      <input id="gate-captain-custom" class="gate-input" type="text" placeholder="Your name" maxlength="40" autocomplete="off">
+      <button class="btn btn-primary" id="gate-practice-start" style="width:100%;margin-top:14px;padding:12px;">Start Practice Draft</button>
+      <button class="btn btn-outline btn-sm" id="gate-back-1" style="width:100%;margin-top:8px;">&lsaquo; Back</button>
+    </div>
+
+    <div id="gate-td-form" class="gate-panel" style="display:none;">
+      <label class="gate-label">Tournament Director Password</label>
+      <input id="gate-td-password" class="gate-input" type="password" placeholder="Password" autocomplete="off">
+      <div id="gate-td-error" class="gate-error" style="display:none;">Incorrect password.</div>
+      <button class="btn btn-danger" id="gate-td-submit" style="width:100%;margin-top:14px;padding:12px;">Enter — Official Auction</button>
+      <button class="btn btn-outline btn-sm" id="gate-back-2" style="width:100%;margin-top:8px;">&lsaquo; Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
      HEADER
      ============================================================ -->
 <header class="app-header">
   <div class="logo">FVL<span>Fall 2026 Draft</span></div>
+  <div class="mode-banner" id="mode-banner"></div>
   <div class="header-actions">
     <div class="mock-control" id="mock-control">
       <label class="mock-toggle" id="mock-toggle-label" title="Toggle mock draft mode">
@@ -1388,9 +1457,19 @@ let state = {
 
 let timerInterval = null;
 
-const LS_KEY = 'fvl_fall2026_v1'; // local fallback cache only — MongoDB via the API is the source of truth
-const DRAFT_ID = (window.FVL_DRAFT_ID || 'fvl-fall-2026');
+const LS_KEY_PREFIX = 'fvl_fall2026_v1'; // local fallback cache only — MongoDB via the API is the source of truth
+const OFFICIAL_DRAFT_ID = 'fvl-fall-2026';
 const CLIENT_ID = (Math.random().toString(36).slice(2) + Date.now().toString(36));
+
+// Set once the mode-select gate resolves (see enterPracticeMode/enterTdMode
+// below): either the official draft (TD only, password-gated) or a
+// captain's own "sim-<name>" practice sandbox. Nothing in the app boots
+// until one of these is chosen.
+let DRAFT_ID   = null;
+let LS_KEY     = null;
+let IS_TD      = false;
+let TD_TOKEN   = null;
+let SIM_NAME   = null;
 
 let socket = null;
 let applyingRemoteUpdate = false; // guards against echo loops while a remote update is being applied
@@ -1438,11 +1517,17 @@ function saveState() {
 
 async function persistStateRemote(payload) {
   try {
-    await fetch('/api/state/' + encodeURIComponent(DRAFT_ID), {
+    const headers = { 'Content-Type': 'application/json' };
+    if (IS_TD && TD_TOKEN) headers['x-td-token'] = TD_TOKEN;
+    const res = await fetch('/api/state/' + encodeURIComponent(DRAFT_ID), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ data: payload, clientId: CLIENT_ID }),
     });
+    if (res.status === 403) {
+      console.warn('Save rejected — Tournament Director auth expired or missing.');
+      toast('⚠ Not saved — TD session expired. Refresh and log in again.', 'danger');
+    }
   } catch (e) {
     console.warn('Remote save failed (offline?) — cached locally, will retry on next change.', e);
   }
@@ -1459,6 +1544,10 @@ function syncThemeIcon() {
 function connectLiveSync() {
   if (typeof io === 'undefined') return; // socket.io client script didn't load — app still works, just single-device
   socket = io();
+
+  socket.on('connect', function() {
+    if (DRAFT_ID) socket.emit('join', DRAFT_ID); // scope broadcasts to this draft's room only
+  });
 
   socket.on('state:update', function(msg) {
     if (!msg || msg.draftId !== DRAFT_ID) return;
@@ -3866,7 +3955,127 @@ function freshStart() {
   saveState();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', setupModeGate);
+
+/* ── MODE GATE (Practice vs Tournament Director) ── */
+
+function slugify(s) {
+  return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'guest';
+}
+
+function setupModeGate() {
+  // If this tab already authenticated as TD this session, skip straight
+  // back into the official auction instead of asking for the password again.
+  try {
+    const savedToken = sessionStorage.getItem('fvl_td_token');
+    if (savedToken) { enterTdMode(savedToken); return; }
+  } catch(e) {}
+
+  // Populate the captain dropdown from CAPTAIN_NAMES so a real captain can
+  // just pick themselves instead of retyping their name.
+  const sel = document.getElementById('gate-captain-select');
+  if (sel) {
+    sel.innerHTML = '<option value="">— select a captain —</option>' +
+      CAPTAIN_NAMES.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  }
+
+  document.getElementById('gate-btn-practice').addEventListener('click', () => showGatePanel('gate-practice-form'));
+  document.getElementById('gate-btn-td').addEventListener('click', () => showGatePanel('gate-td-form'));
+  document.getElementById('gate-back-1').addEventListener('click', () => showGatePanel('gate-choice'));
+  document.getElementById('gate-back-2').addEventListener('click', () => showGatePanel('gate-choice'));
+
+  // Remember the last name used on this device so a returning captain
+  // doesn't have to retype it.
+  try {
+    const lastName = localStorage.getItem('fvl_last_sim_name');
+    if (lastName) document.getElementById('gate-captain-custom').value = lastName;
+  } catch(e) {}
+
+  document.getElementById('gate-practice-start').addEventListener('click', () => {
+    const custom = document.getElementById('gate-captain-custom').value.trim();
+    const picked = document.getElementById('gate-captain-select').value;
+    const name = custom || picked;
+    if (!name) { toast('Enter or pick a name first.', 'danger'); return; }
+    enterPracticeMode(name);
+  });
+
+  document.getElementById('gate-captain-select').addEventListener('change', function() {
+    if (this.value) document.getElementById('gate-captain-custom').value = '';
+  });
+
+  document.getElementById('gate-td-submit').addEventListener('click', submitTdLogin);
+  document.getElementById('gate-td-password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitTdLogin();
+  });
+}
+
+function showGatePanel(id) {
+  ['gate-choice', 'gate-practice-form', 'gate-td-form'].forEach(pid => {
+    document.getElementById(pid).style.display = (pid === id) ? 'flex' : 'none';
+  });
+  document.getElementById('gate-td-error').style.display = 'none';
+}
+
+async function submitTdLogin() {
+  const pw = document.getElementById('gate-td-password').value;
+  const errEl = document.getElementById('gate-td-error');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/td/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!res.ok) { errEl.style.display = 'block'; return; }
+    const body = await res.json();
+    enterTdMode(body.token);
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server. Check your connection and try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+function enterPracticeMode(name) {
+  SIM_NAME = name;
+  IS_TD    = false;
+  TD_TOKEN = null;
+  DRAFT_ID = 'sim-' + slugify(name);
+  LS_KEY   = LS_KEY_PREFIX + ':' + DRAFT_ID;
+  try { localStorage.setItem('fvl_last_sim_name', name); } catch(e) {}
+  bootAfterGate();
+}
+
+function enterTdMode(token) {
+  IS_TD    = true;
+  TD_TOKEN = token;
+  SIM_NAME = null;
+  DRAFT_ID = OFFICIAL_DRAFT_ID;
+  LS_KEY   = LS_KEY_PREFIX + ':' + DRAFT_ID;
+  try { sessionStorage.setItem('fvl_td_token', token); } catch(e) {}
+  bootAfterGate();
+}
+
+function bootAfterGate() {
+  document.getElementById('mode-gate').style.display = 'none';
+  renderModeBanner();
+  init();
+}
+
+function renderModeBanner() {
+  const el = document.getElementById('mode-banner');
+  if (!el) return;
+  if (IS_TD) {
+    el.innerHTML = '<span class="mode-pill td">🔒 TD &middot; Official Auction</span><button id="mode-switch-btn">Switch</button>';
+  } else {
+    el.innerHTML = '<span class="mode-pill practice">🎮 Practice &middot; ' +
+      SIM_NAME.replace(/</g,'&lt;') + '</span><button id="mode-switch-btn">Switch</button>';
+  }
+  const btn = document.getElementById('mode-switch-btn');
+  if (btn) btn.addEventListener('click', () => {
+    try { sessionStorage.removeItem('fvl_td_token'); } catch(e) {}
+    location.reload();
+  });
+}
 
 /* \u2500\u2500 FIREWORKS ENGINE \u2500\u2500 */
 var fwCanvas = null, fwCtx = null, fwParticles = [], fwAnimId = null, fwBursting = false;
