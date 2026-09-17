@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const express = require('express');
@@ -7,6 +8,8 @@ const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
 const apiRoutes = require('./routes/api');
+const Roster = require('./models/Roster');
+const { ROSTER_ID } = require('./utils/constants');
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -46,10 +49,35 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 
+// If the roster collection is empty (fresh database), seed it from the
+// bundled JSON so the app has something to draft on first boot. This never
+// overwrites an existing roster — once it's in MongoDB, updates go through
+// PUT /api/roster (TD-authenticated) or scripts/seed-roster.js, not here.
+async function seedRosterIfEmpty() {
+  const existing = await Roster.findOne({ rosterId: ROSTER_ID }).lean();
+  if (existing) return;
+
+  const seedPath = path.join(__dirname, 'data', 'roster-fall-2026.json');
+  if (!fs.existsSync(seedPath)) {
+    console.warn(`No existing roster and no seed file at ${seedPath} — app will boot with an empty roster.`);
+    return;
+  }
+
+  try {
+    const raw = fs.readFileSync(seedPath, 'utf8');
+    const { captains, players } = JSON.parse(raw);
+    await Roster.create({ rosterId: ROSTER_ID, captains: captains || [], players: players || [] });
+    console.log(`Seeded roster "${ROSTER_ID}" from ${seedPath}: ${captains.length} captains, ${players.length} players.`);
+  } catch (err) {
+    console.error('Failed to seed roster from', seedPath, err);
+  }
+}
+
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('Connected to MongoDB');
+    await seedRosterIfEmpty();
     server.listen(PORT, () => console.log(`FVL Draft server listening on port ${PORT}`));
   })
   .catch((err) => {

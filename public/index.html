@@ -742,7 +742,11 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
   <div class="gate-box">
     <div class="logo" style="text-align:center;margin-bottom:22px;">FVL<span>Fall 2026 Draft</span></div>
 
-    <div id="gate-choice" class="gate-panel">
+    <div id="gate-loading" class="gate-panel" style="align-items:center;text-align:center;color:var(--muted);font-family:var(--fu);letter-spacing:1px;">
+      Loading roster&hellip;
+    </div>
+
+    <div id="gate-choice" class="gate-panel" style="display:none;">
       <button class="gate-choice-btn" id="gate-btn-practice">
         <span class="gate-choice-emoji">🎮</span>
         <span>
@@ -1161,12 +1165,24 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 <script>
 const BUDGET        = 4200; // total team budget, captain's cost is deducted from this (not on top of it)
 
-// Per-captain budget overrides (name must match CAPTAIN_NAMES exactly).
-// TODO(Fall 2026): add any captains who get a different starting budget.
+// Per-captain budget overrides (name must match a captain name exactly).
 const TEAM_BUDGETS = {
   // 'Captain One': 3300,
 };
-const TEAM_COUNT    = 16;
+
+// ── Roster config: captains + players (name, number, tier, pic, skills) ──
+// This used to be hardcoded here. It now lives in MongoDB (via /api/roster)
+// so the roster can be updated anytime — reseeded from an updated
+// spreadsheet, or edited directly — without touching this file or
+// redeploying. loadRosterConfig() populates these before anything else
+// runs; they start empty and are never read before that fetch resolves.
+let TEAM_COUNT      = 0;
+let CAPTAIN_NAMES   = [];
+let CAPTAIN_TIERS   = {};
+let CAPTAIN_PICS    = {};
+let CAPTAIN_NUMBERS = {};
+let PLAYER_LIST      = [];
+
 const ROSTER_SIZE   = 6;
 const MIN_BID_INC   = 25;
 const TIMER_SECS_LIVE = 30;
@@ -1180,12 +1196,16 @@ function RESERVE_MIN(slotsAfter) {
   return RESERVE_TABLE[Math.min(slotsAfter, 4)] || 1350;
 }
 
+// Base prices are a game-design constant (stay fixed across seasons unless
+// you change the auction economy). `count` is NOT hardcoded — it's
+// recomputed from the actual fetched roster every time loadRosterConfig()
+// runs, so it's always accurate even after the roster is edited.
 const TIERS = {
-  'Biryani': { count: 8,  base: 800 },
-  'Samosa': { count: 15,  base: 650 },
-  'Chai': { count: 17, base: 475 },
-  'Biscuit': { count: 25, base: 325 },
-  'Gatorade': { count: 15, base: 275 },
+  'Biryani': { count: 0, base: 800 },
+  'Samosa':  { count: 0, base: 650 },
+  'Chai':    { count: 0, base: 475 },
+  'Biscuit': { count: 0, base: 325 },
+  'Gatorade':{ count: 0, base: 275 },
 };
 
 const ROUND_DEFS = [
@@ -1206,59 +1226,6 @@ function shuffle(arr) {
   return arr;
 }
 
-// TODO(Fall 2026): fill in the 16 captains once the lineup is finalized.
-// Must match TEAM_COUNT above, and any per-captain budget override in
-// TEAM_BUDGETS must use the exact same name string used here.
-// Placeholders (C01-C16) below — replace with real names/images when ready.
-const CAPTAIN_NAMES = [
-  'C01',
-  'C02',
-  'C03',
-  'C04',
-  'C05',
-  'C06',
-  'C07',
-  'C08',
-  'C09',
-  'C10',
-  'C11',
-  'C12',
-  'C13',
-  'C14',
-  'C15',
-  'C16',
-];
-
-// Optional headshots, keyed by the exact CAPTAIN_NAMES string.
-const CAPTAIN_PICS = {
-  // 'Captain One': 'https://drive.google.com/thumbnail?id=XXXX&sz=w400',
-};
-
-// TODO(Fall 2026): each captain's own player tier (must be a key in TIERS
-// above). Any captain not listed here defaults to 'Biryani' (the safest/
-// most expensive assumption) until you fill this in.
-// Placeholder tiers below follow the same 8:15:17:25:15 ratio as the
-// player pool, scaled to 16 captains (2 Biryani / 3 Samosa / 3 Chai /
-// 5 Biscuit / 3 Gatorade) — replace with real assignments when ready.
-const CAPTAIN_TIERS = {
-  'C01': 'Biryani',
-  'C02': 'Biryani',
-  'C03': 'Samosa',
-  'C04': 'Samosa',
-  'C05': 'Samosa',
-  'C06': 'Chai',
-  'C07': 'Chai',
-  'C08': 'Chai',
-  'C09': 'Biscuit',
-  'C10': 'Biscuit',
-  'C11': 'Biscuit',
-  'C12': 'Biscuit',
-  'C13': 'Biscuit',
-  'C14': 'Gatorade',
-  'C15': 'Gatorade',
-  'C16': 'Gatorade',
-};
-
 const CAPTAIN_PREMIUM = 0.25; // captains cost their tier's base price + this % premium, deducted from their own team's budget
 
 function captainCost(tier) {
@@ -1266,100 +1233,51 @@ function captainCost(tier) {
   return Math.round(base * (1 + CAPTAIN_PREMIUM));
 }
 
-// TODO(Fall 2026): fill in real names/images once available. Placeholders
-// (P01-P80) below follow last season's tier ratio: 8 Biryani / 15 Samosa /
-// 17 Chai / 25 Biscuit / 15 Gatorade = 80 total.
-// tier must be one of the keys in TIERS above. pic, skills and remarks
-// are optional.
-const PLAYER_LIST = [
-  { name: 'P01', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P02', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P03', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P04', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P05', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P06', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P07', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P08', tier:'Biryani', pic: '', skills: '', remarks: '' },
-  { name: 'P09', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P10', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P11', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P12', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P13', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P14', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P15', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P16', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P17', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P18', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P19', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P20', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P21', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P22', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P23', tier:'Samosa', pic: '', skills: '', remarks: '' },
-  { name: 'P24', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P25', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P26', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P27', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P28', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P29', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P30', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P31', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P32', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P33', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P34', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P35', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P36', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P37', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P38', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P39', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P40', tier:'Chai', pic: '', skills: '', remarks: '' },
-  { name: 'P41', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P42', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P43', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P44', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P45', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P46', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P47', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P48', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P49', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P50', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P51', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P52', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P53', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P54', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P55', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P56', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P57', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P58', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P59', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P60', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P61', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P62', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P63', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P64', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P65', tier:'Biscuit', pic: '', skills: '', remarks: '' },
-  { name: 'P66', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P67', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P68', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P69', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P70', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P71', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P72', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P73', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P74', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P75', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P76', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P77', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P78', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P79', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-  { name: 'P80', tier:'Gatorade', pic: '', skills: '', remarks: '' },
-];
+// Fetches the roster (captains + players) from MongoDB via the API and
+// populates the mutable config above. Must resolve before setupModeGate()
+// (captain dropdown) or generatePlayers()/generateTeams() (the draft
+// itself) run. On failure, everything stays empty — the app still boots
+// (generatePlayers/generateTeams already tolerate an empty roster) and a
+// toast explains the roster couldn't be loaded.
+async function loadRosterConfig() {
+  try {
+    const res = await fetch('/api/roster');
+    if (!res.ok) throw new Error('bad response');
+    const body = await res.json();
+    const captains = (body && Array.isArray(body.captains)) ? body.captains : [];
+    const players  = (body && Array.isArray(body.players))  ? body.players  : [];
+
+    CAPTAIN_NAMES   = captains.map(c => c.name);
+    CAPTAIN_TIERS   = {}; captains.forEach(c => { CAPTAIN_TIERS[c.name] = c.tier; });
+    CAPTAIN_PICS    = {}; captains.forEach(c => { if (c.pic)    CAPTAIN_PICS[c.name]    = c.pic; });
+    CAPTAIN_NUMBERS = {}; captains.forEach(c => { if (c.number) CAPTAIN_NUMBERS[c.name] = c.number; });
+    TEAM_COUNT      = captains.length;
+
+    PLAYER_LIST = players.map(p => ({
+      name:    p.name,
+      tier:    p.tier,
+      pic:     p.pic     || '',
+      skills:  p.skills  || '',
+      remarks: p.remarks || '',
+      number:  p.number  || '',
+    }));
+
+    Object.keys(TIERS).forEach(t => { TIERS[t].count = 0; });
+    PLAYER_LIST.forEach(p => { if (TIERS[p.tier]) TIERS[p.tier].count++; });
+
+    return true;
+  } catch (e) {
+    console.warn('Could not load roster from the server.', e);
+    return false;
+  }
+}
 
 function generatePlayers() {
   const players = [];
   let idx = 0;
 
   for (var _pi = 0; _pi < PLAYER_LIST.length; _pi++) { var entry = PLAYER_LIST[_pi];
-    const base = TIERS[entry.tier].base;
+    const base = (TIERS[entry.tier] || TIERS['Gatorade']).base;
     players.push({
       id:          idx,
       name:        entry.name,
@@ -1374,6 +1292,7 @@ function generatePlayers() {
       pic:         entry.pic     || '',
       skills:      entry.skills  || '',
       remarks:     entry.remarks || '',
+      number:      entry.number  || '',
     });
     idx++;
   }
@@ -1394,7 +1313,8 @@ function generatePlayers() {
       draftedBy:   i,
       finalPrice:  capPrice,
       unsold:      false,
-      pic:         CAPTAIN_PICS[capName] || '',
+      pic:         CAPTAIN_PICS[capName]    || '',
+      number:      CAPTAIN_NUMBERS[capName] || '',
     });
     idx++;
   }
@@ -3521,13 +3441,19 @@ function showRules() {
   var body = document.getElementById('rules-body');
   if (!body) return;
 
-  var T = {
-    'Biryani': {name:'Biryani', color:'#f0c040', bg:'rgba(240,192,64,0.15)', count:8,  base:800},
-    'Samosa': {name:'Samosa',  color:'#f03050', bg:'rgba(240,48,80,0.15)',  count:15, base:650},
-    'Chai': {name:'Chai',    color:'#ff7e2e', bg:'rgba(255,126,46,0.15)', count:17, base:475},
-    'Biscuit': {name:'Biscuit', color:'#22d68a', bg:'rgba(34,214,138,0.15)', count:25, base:325},
-    'Gatorade': {name:'Gatorade',color:'#8fa0c0', bg:'rgba(143,160,192,0.15)',count:15, base:275},
+  var TIER_META = {
+    'Biryani': {color:'#f0c040', bg:'rgba(240,192,64,0.15)'},
+    'Samosa':  {color:'#f03050', bg:'rgba(240,48,80,0.15)'},
+    'Chai':    {color:'#ff7e2e', bg:'rgba(255,126,46,0.15)'},
+    'Biscuit': {color:'#22d68a', bg:'rgba(34,214,138,0.15)'},
+    'Gatorade':{color:'#8fa0c0', bg:'rgba(143,160,192,0.15)'},
   };
+  // Pull live counts/prices from TIERS (populated from the actual roster)
+  // instead of duplicating stale numbers here.
+  var T = {};
+  Object.keys(TIERS).forEach(function(t) {
+    T[t] = { name: t, color: TIER_META[t].color, bg: TIER_META[t].bg, count: TIERS[t].count, base: TIERS[t].base };
+  });
 
   // Reserve table explanation
   var reserveRows = [
@@ -3604,14 +3530,14 @@ function showRules() {
     '<div class="rules-section">',
       '<div class="rules-section-title">Draft Rounds</div>',
       '<ul class="rules-list">',
-        '<li class="gold"><strong>Round 1 &mdash; Samosa:</strong> All 15 Samosa players are auctioned first.',
+        '<li class="gold"><strong>Round 1 &mdash; Samosa:</strong> All ' + T['Samosa'].count + ' Samosa players are auctioned first.',
           '<span class="ex">Players are randomly ordered and nominated one by one.</span>',
         '</li>',
-        '<li class="gold"><strong>Round 2 &mdash; Chai &amp; Biryani:</strong> All 17 Chai and 8 Biryani players are mixed together randomly.',
+        '<li class="gold"><strong>Round 2 &mdash; Chai &amp; Biryani:</strong> All ' + T['Chai'].count + ' Chai and ' + T['Biryani'].count + ' Biryani players are mixed together randomly.',
           '<span class="ex">You may land a top-tier Biryani player &mdash; or miss out if budget is depleted.</span>',
         '</li>',
-        '<li><strong>Round 3 &mdash; Biscuit:</strong> All 25 Biscuit players auctioned in random order.</li>',
-        '<li><strong>Round 4 &mdash; Gatorade:</strong> All 15 Gatorade players auctioned in random order.</li>',
+        '<li><strong>Round 3 &mdash; Biscuit:</strong> All ' + T['Biscuit'].count + ' Biscuit players auctioned in random order.</li>',
+        '<li><strong>Round 4 &mdash; Gatorade:</strong> All ' + T['Gatorade'].count + ' Gatorade players auctioned in random order.</li>',
         '<li class="teal"><strong>Round 5 &mdash; Fire Sale:</strong> Any player not sold in rounds 1&ndash;4 returns at a <strong>reduced base price ($25 less)</strong>. All teams can bid.',
           '<span class="ex">Example: A Samosa player with $650 base that went unsold returns at $625 in Fire Sale.</span>',
         '</li>',
@@ -3677,7 +3603,7 @@ function showRules() {
     '<div class="rules-section">',
       '<div class="rules-section-title">Rosters &amp; Captains</div>',
       '<ul class="rules-list">',
-        '<li><strong>16 teams</strong> each captained by a pre-selected player. A captain\'s cost is <strong>their tier\'s base price + a 25% premium</strong>, deducted from their own team\'s $4,200 budget before the auction begins.',
+        '<li><strong>' + TEAM_COUNT + ' teams</strong> each captained by a pre-selected player. A captain\'s cost is <strong>their tier\'s base price + a 25% premium</strong>, deducted from their own team\'s $4,200 budget before the auction begins.',
           '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($475 base) costs $475 + 25% = $594.</span>',
         '</li>',
         '<li><strong>Each team drafts 5 players</strong> (1 captain + 5 = 6 total on your roster).',
@@ -3987,7 +3913,7 @@ function freshStart() {
   saveState();
 }
 
-document.addEventListener('DOMContentLoaded', setupModeGate);
+document.addEventListener('DOMContentLoaded', bootstrapGate);
 
 /* ── MODE GATE (Practice vs Tournament Director) ── */
 
@@ -3995,7 +3921,14 @@ function slugify(s) {
   return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'guest';
 }
 
-function setupModeGate() {
+async function bootstrapGate() {
+  const ok = await loadRosterConfig();
+  if (!ok) {
+    document.getElementById('gate-loading').innerHTML =
+      'Couldn\'t load the roster from the server.<br><span style="font-size:0.75rem;">Check your connection and reload.</span>';
+    return; // don't proceed into a gate with no captains/players to show
+  }
+
   // If this tab already authenticated as TD this session, skip straight
   // back into the official auction instead of asking for the password again.
   try {
@@ -4003,6 +3936,11 @@ function setupModeGate() {
     if (savedToken) { enterTdMode(savedToken); return; }
   } catch(e) {}
 
+  setupModeGate();
+  showGatePanel('gate-choice');
+}
+
+function setupModeGate() {
   // Populate the captain dropdown from CAPTAIN_NAMES so a real captain can
   // just pick themselves instead of retyping their name.
   const sel = document.getElementById('gate-captain-select');
@@ -4043,7 +3981,7 @@ function setupModeGate() {
 }
 
 function showGatePanel(id) {
-  ['gate-choice', 'gate-practice-form', 'gate-td-form'].forEach(pid => {
+  ['gate-loading', 'gate-choice', 'gate-practice-form', 'gate-td-form'].forEach(pid => {
     document.getElementById(pid).style.display = (pid === id) ? 'flex' : 'none';
   });
   document.getElementById('gate-td-error').style.display = 'none';

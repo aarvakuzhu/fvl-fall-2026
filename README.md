@@ -33,17 +33,35 @@ The browser also mirrors every save to `localStorage` as an offline
 fallback — if the network drops mid-auction, bidding keeps working locally
 and re-syncs to MongoDB on the next successful save.
 
-## Fill in the Fall roster
+## The roster (captains + players)
 
-Before running a real draft, edit `public/index.html`:
+The roster is **not** hardcoded in `public/index.html` anymore — it lives in
+MongoDB (via `GET`/`PUT /api/roster`) so it can be updated anytime without
+touching app code or redeploying. `public/index.html` fetches it at load
+time and builds `CAPTAIN_NAMES`, `CAPTAIN_TIERS`, `CAPTAIN_PICS`,
+`PLAYER_LIST`, and `TEAM_COUNT` from the response.
 
-- `CAPTAIN_NAMES` — the 16 Fall captains
-- `CAPTAIN_PICS` — optional headshots per captain
-- `TEAM_BUDGETS` — optional per-captain budget overrides (default is `BUDGET`)
-- `PLAYER_LIST` — the auction player pool (`name`, `tier`, optional `pic` /
-  `skills` / `remarks`)
+**First boot:** if the roster collection is empty, `server.js` auto-seeds it
+from `data/roster-fall-2026.json` — no manual step needed the first time.
 
-Each is marked with a `TODO(Fall 2026)` comment in the file.
+**Updating it later** — pick one:
+1. Edit `data/roster-fall-2026.json` (or generate a new one from an updated
+   spreadsheet export), then run `npm run seed:roster` locally (needs
+   `MONGODB_URI` in `.env`). This overwrites the live roster.
+2. `PUT /api/roster` directly with `{ captains: [...], players: [...] }` and
+   an `x-td-token` header (obtained from `POST /api/td/auth`) — the same
+   auth the official draft uses.
+
+Each person (captain or player) is `{ name, number, tier, pic, skills,
+remarks }`. `tier` must be one of the `TIERS` keys in `public/index.html`
+(`Biryani` / `Samosa` / `Chai` / `Biscuit` / `Gatorade`) — pool size per
+tier is computed from whatever's actually in the roster, not hardcoded.
+`skills` (primary skill) ships blank in the initial import and can be
+filled in via either update path above whenever that data's ready.
+
+`TEAM_BUDGETS` (per-captain budget overrides, default is `BUDGET`) is the
+one piece still in code, in `public/index.html` — it's a rare manual
+exception, not roster data.
 
 ## Practice mode vs. the official auction
 
@@ -96,10 +114,15 @@ Visit http://localhost:3000
 ## Project structure
 
 ```
-server.js            Express app, Mongo connection, Socket.io wiring
-models/DraftState.js Mongoose schema (one flexible document per draftId)
-routes/api.js         GET / PUT / DELETE /api/state/:draftId
+server.js             Express app, Mongo connection, Socket.io wiring, roster auto-seed on first boot
+models/DraftState.js   Mongoose schema for auction state (one flexible document per draftId)
+models/Roster.js       Mongoose schema for the roster (captains + players)
+routes/api.js          /api/state/:draftId (GET/PUT/DELETE), /api/roster (GET/PUT), /api/td/auth (POST)
+utils/tdAuth.js         TD password check + stateless token
+utils/constants.js       Shared constants (ROSTER_ID)
+scripts/seed-roster.js   Reseed the roster from a JSON file — the "update it later" path
+data/roster-fall-2026.json  The current roster — captains + players, editable, versioned in Git
 public/index.html      The draft board UI + client-side auction logic
-render.yaml            Render Blueprint
-.env.example            Env var template
+render.yaml             Render Blueprint
+.env.example             Env var template
 ```
