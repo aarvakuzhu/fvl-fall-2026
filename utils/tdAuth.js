@@ -6,7 +6,7 @@ const crypto = require('crypto');
 // season. Change TD_PASSWORD via the Render environment variable when
 // you're ready; FVL-Director-2026 is just the default so this works out of
 // the box locally.
-const TD_PASSWORD = process.env.TD_PASSWORD || 'FVL-Director-2026';
+const TD_PASSWORD = process.env.TD_PASSWORD || '2026';
 
 const OFFICIAL_DRAFT_ID = 'fvl-fall-2026';
 

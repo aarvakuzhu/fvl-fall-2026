@@ -70,7 +70,7 @@ captain's practice session never sends updates to anyone else's screen.
 | Variable | Required | Purpose |
 |---|---|---|
 | `MONGODB_URI` | Yes | Atlas connection string |
-| `TD_PASSWORD` | No | Tournament Director password. Defaults to `FVL-Director-2026` if unset — change this before the real auction. |
+| `TD_PASSWORD` | No | Tournament Director password. Defaults to `2026` if unset — change this before the real auction. |
 | `PORT` | No | Local dev only; Render sets this automatically |
 
 

@@ -91,6 +91,25 @@
 .mode-banner .mode-pill.practice{background:rgba(34,214,138,0.12);color:var(--success);border:1px solid rgba(34,214,138,0.3)}
 .mode-banner button{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-family:var(--fu);font-size:0.7rem;letter-spacing:1px}
 .mode-banner button:hover{color:var(--text)}
+.mode-banner .mode-pill.watch{background:rgba(56,217,245,0.12);color:var(--cyan);border:1px solid rgba(56,217,245,0.3)}
+
+/* SPECTATOR MODE — read-only view of the official auction. CSS-level lock
+   (not just JS) so it can't be bypassed by re-enabling a button in devtools;
+   actual persistence is still independently blocked server-side (only a
+   valid TD token can write to the official draft). */
+body.spectator-mode #btn-undo,
+body.spectator-mode #btn-reset,
+body.spectator-mode #btn-nominate-next,
+body.spectator-mode #btn-nominate-random,
+body.spectator-mode #btn-pause-auction,
+body.spectator-mode #btn-cancel-nomination,
+body.spectator-mode #btn-mark-unsold,
+body.spectator-mode #btn-draw-winner,
+body.spectator-mode #btn-confirm-winner,
+body.spectator-mode .team-bid-btn,
+body.spectator-mode #mock-control{
+  pointer-events:none !important;opacity:0.35 !important;cursor:not-allowed !important;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
 body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -731,6 +750,13 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
         <span>
           <span class="gate-choice-title">Tournament Director</span>
           <span class="gate-choice-sub">Password-protected. Runs the one official, final auction.</span>
+        </span>
+      </button>
+      <button class="gate-choice-btn" id="gate-btn-watch">
+        <span class="gate-choice-emoji">👀</span>
+        <span>
+          <span class="gate-choice-title">Watch Live Auction</span>
+          <span class="gate-choice-sub">Follow the official auction as it happens — view only, no bidding.</span>
         </span>
       </button>
     </div>
@@ -1468,6 +1494,7 @@ const CLIENT_ID = (Math.random().toString(36).slice(2) + Date.now().toString(36)
 let DRAFT_ID   = null;
 let LS_KEY     = null;
 let IS_TD      = false;
+let IS_SPECTATOR = false;
 let TD_TOKEN   = null;
 let SIM_NAME   = null;
 
@@ -1524,7 +1551,7 @@ async function persistStateRemote(payload) {
       headers,
       body: JSON.stringify({ data: payload, clientId: CLIENT_ID }),
     });
-    if (res.status === 403) {
+    if (res.status === 403 && !IS_SPECTATOR) {
       console.warn('Save rejected — Tournament Director auth expired or missing.');
       toast('⚠ Not saved — TD session expired. Refresh and log in again.', 'danger');
     }
@@ -3981,6 +4008,7 @@ function setupModeGate() {
 
   document.getElementById('gate-btn-practice').addEventListener('click', () => showGatePanel('gate-practice-form'));
   document.getElementById('gate-btn-td').addEventListener('click', () => showGatePanel('gate-td-form'));
+  document.getElementById('gate-btn-watch').addEventListener('click', enterSpectatorMode);
   document.getElementById('gate-back-1').addEventListener('click', () => showGatePanel('gate-choice'));
   document.getElementById('gate-back-2').addEventListener('click', () => showGatePanel('gate-choice'));
 
@@ -4036,22 +4064,35 @@ async function submitTdLogin() {
 }
 
 function enterPracticeMode(name) {
-  SIM_NAME = name;
-  IS_TD    = false;
-  TD_TOKEN = null;
-  DRAFT_ID = 'sim-' + slugify(name);
-  LS_KEY   = LS_KEY_PREFIX + ':' + DRAFT_ID;
+  SIM_NAME     = name;
+  IS_TD        = false;
+  IS_SPECTATOR = false;
+  TD_TOKEN     = null;
+  DRAFT_ID     = 'sim-' + slugify(name);
+  LS_KEY       = LS_KEY_PREFIX + ':' + DRAFT_ID;
   try { localStorage.setItem('fvl_last_sim_name', name); } catch(e) {}
   bootAfterGate();
 }
 
 function enterTdMode(token) {
-  IS_TD    = true;
-  TD_TOKEN = token;
-  SIM_NAME = null;
-  DRAFT_ID = OFFICIAL_DRAFT_ID;
-  LS_KEY   = LS_KEY_PREFIX + ':' + DRAFT_ID;
+  IS_TD        = true;
+  IS_SPECTATOR = false;
+  TD_TOKEN     = token;
+  SIM_NAME     = null;
+  DRAFT_ID     = OFFICIAL_DRAFT_ID;
+  LS_KEY       = LS_KEY_PREFIX + ':' + DRAFT_ID;
   try { sessionStorage.setItem('fvl_td_token', token); } catch(e) {}
+  bootAfterGate();
+}
+
+function enterSpectatorMode() {
+  IS_TD        = false;
+  IS_SPECTATOR = true;
+  TD_TOKEN     = null;
+  SIM_NAME     = null;
+  DRAFT_ID     = OFFICIAL_DRAFT_ID;
+  LS_KEY       = LS_KEY_PREFIX + ':' + DRAFT_ID + ':watch'; // separate local cache so a spectator never overwrites the TD's own local fallback
+  document.body.classList.add('spectator-mode');
   bootAfterGate();
 }
 
@@ -4066,6 +4107,8 @@ function renderModeBanner() {
   if (!el) return;
   if (IS_TD) {
     el.innerHTML = '<span class="mode-pill td">🔒 TD &middot; Official Auction</span><button id="mode-switch-btn">Switch</button>';
+  } else if (IS_SPECTATOR) {
+    el.innerHTML = '<span class="mode-pill watch">👀 Watching &middot; Official Auction (view only)</span><button id="mode-switch-btn">Switch</button>';
   } else {
     el.innerHTML = '<span class="mode-pill practice">🎮 Practice &middot; ' +
       SIM_NAME.replace(/</g,'&lt;') + '</span><button id="mode-switch-btn">Switch</button>';
