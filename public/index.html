@@ -1109,10 +1109,24 @@ function shuffle(arr) {
 // TODO(Fall 2026): fill in the 16 captains once the lineup is finalized.
 // Must match TEAM_COUNT above, and any per-captain budget override in
 // TEAM_BUDGETS must use the exact same name string used here.
+// Placeholders (C01-C16) below — replace with real names/images when ready.
 const CAPTAIN_NAMES = [
-  // 'Captain One',
-  // 'Captain Two',
-  // ... 16 total
+  'C01',
+  'C02',
+  'C03',
+  'C04',
+  'C05',
+  'C06',
+  'C07',
+  'C08',
+  'C09',
+  'C10',
+  'C11',
+  'C12',
+  'C13',
+  'C14',
+  'C15',
+  'C16',
 ];
 
 // Optional headshots, keyed by the exact CAPTAIN_NAMES string.
@@ -1123,8 +1137,26 @@ const CAPTAIN_PICS = {
 // TODO(Fall 2026): each captain's own player tier (must be a key in TIERS
 // above). Any captain not listed here defaults to 'Biryani' (the safest/
 // most expensive assumption) until you fill this in.
+// Placeholder tiers below follow the same 8:15:17:25:15 ratio as the
+// player pool, scaled to 16 captains (2 Biryani / 3 Samosa / 3 Chai /
+// 5 Biscuit / 3 Gatorade) — replace with real assignments when ready.
 const CAPTAIN_TIERS = {
-  // 'Captain One': 'Samosa',
+  'C01': 'Biryani',
+  'C02': 'Biryani',
+  'C03': 'Samosa',
+  'C04': 'Samosa',
+  'C05': 'Samosa',
+  'C06': 'Chai',
+  'C07': 'Chai',
+  'C08': 'Chai',
+  'C09': 'Biscuit',
+  'C10': 'Biscuit',
+  'C11': 'Biscuit',
+  'C12': 'Biscuit',
+  'C13': 'Biscuit',
+  'C14': 'Gatorade',
+  'C15': 'Gatorade',
+  'C16': 'Gatorade',
 };
 
 const CAPTAIN_PREMIUM = 0.25; // captains cost their tier's base price + this % premium, deducted from their own team's budget
@@ -1134,11 +1166,92 @@ function captainCost(tier) {
   return Math.round(base * (1 + CAPTAIN_PREMIUM));
 }
 
-// TODO(Fall 2026): fill in the auction player pool. tier must be one of
-// the keys in TIERS above (Biryani / Samosa / Chai / Biscuit / Gatorade).
-// pic, skills and remarks are optional.
+// TODO(Fall 2026): fill in real names/images once available. Placeholders
+// (P01-P80) below follow last season's tier ratio: 8 Biryani / 15 Samosa /
+// 17 Chai / 25 Biscuit / 15 Gatorade = 80 total.
+// tier must be one of the keys in TIERS above. pic, skills and remarks
+// are optional.
 const PLAYER_LIST = [
-  // { name: 'Player Name', tier: 'Samosa', pic: 'https://drive.google.com/thumbnail?id=XXXX&sz=w400', skills: 'Spiker', remarks: '' },
+  { name: 'P01', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P02', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P03', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P04', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P05', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P06', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P07', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P08', tier:'Biryani', pic: '', skills: '', remarks: '' },
+  { name: 'P09', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P10', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P11', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P12', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P13', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P14', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P15', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P16', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P17', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P18', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P19', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P20', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P21', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P22', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P23', tier:'Samosa', pic: '', skills: '', remarks: '' },
+  { name: 'P24', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P25', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P26', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P27', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P28', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P29', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P30', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P31', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P32', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P33', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P34', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P35', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P36', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P37', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P38', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P39', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P40', tier:'Chai', pic: '', skills: '', remarks: '' },
+  { name: 'P41', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P42', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P43', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P44', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P45', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P46', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P47', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P48', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P49', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P50', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P51', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P52', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P53', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P54', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P55', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P56', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P57', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P58', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P59', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P60', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P61', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P62', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P63', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P64', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P65', tier:'Biscuit', pic: '', skills: '', remarks: '' },
+  { name: 'P66', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P67', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P68', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P69', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P70', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P71', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P72', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P73', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P74', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P75', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P76', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P77', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P78', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P79', tier:'Gatorade', pic: '', skills: '', remarks: '' },
+  { name: 'P80', tier:'Gatorade', pic: '', skills: '', remarks: '' },
 ];
 
 function generatePlayers() {
