@@ -110,6 +110,11 @@ body.spectator-mode .team-bid-btn,
 body.spectator-mode #mock-control{
   pointer-events:none !important;opacity:0.35 !important;cursor:not-allowed !important;
 }
+/* Player cards: block the click-to-nominate, but keep full opacity — a
+   spectator should be able to read the pool clearly, just not act on it. */
+body.spectator-mode .player-card:not(.drafted):not(.on-block){
+  pointer-events:none !important;cursor:default !important;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
 body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:100vh;overflow-x:hidden}
