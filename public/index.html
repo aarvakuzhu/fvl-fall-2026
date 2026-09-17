@@ -1099,6 +1099,7 @@ function generatePlayers() {
   }
 
   for (let i = 0; i < TEAM_COUNT; i++) {
+    if (!CAPTAIN_NAMES[i]) continue; // no captain filled in yet for this slot — leave the team empty rather than crash
     players.push({
       id:          idx,
       name:        CAPTAIN_NAMES[i],
@@ -1122,7 +1123,7 @@ function generateTeams(players) {
   return Array.from({ length: TEAM_COUNT }, (_, i) => {
     const captain = players.find(p => p.isCaptain && p.draftedBy === i);
 
-    const defaultName = captain
+    const defaultName = (captain && captain.name)
       ? captain.name.split(' ')[0] + "'s Team"
       : `Team ${i + 1}`;
     return {
