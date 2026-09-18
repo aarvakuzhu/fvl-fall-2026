@@ -62,7 +62,7 @@ pushed live automatically.
 
 Each person (captain or player) is `{ name, number, tier, pic, skills,
 remarks }`. `tier` must be one of the `TIERS` keys in `public/index.html`
-(`Biryani` / `Samosa` / `Chai` / `Biscuit` / `Gatorade`) — pool size per
+(`Mandi` / `Biryani` / `Samosa` / `Chai` / `Biscuit` / `Gatorade`) — pool size per
 tier is computed from whatever's actually in the roster, not hardcoded.
 `skills` (primary skill) ships blank in the initial import and can be
 filled in via either update path above whenever that data's ready.

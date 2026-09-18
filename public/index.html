@@ -175,6 +175,18 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .biryani-active::before{content:'⭐ ELITE PLAYER ⭐';position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-family:var(--fu);font-weight:700;font-size:0.65rem;letter-spacing:4px;color:var(--gold);white-space:nowrap;animation:apLabelPulse 1s ease-in-out infinite}
 @keyframes apLabelPulse{0%,100%{opacity:0.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.05)}}
 .biryani-panel-glow{box-shadow:0 0 0 1px rgba(240,192,64,0.5),0 0 40px rgba(240,192,64,0.15),inset 0 0 40px rgba(240,192,64,0.04) !important;border-color:rgba(240,192,64,0.5) !important}
+
+/* MANDI — new top tier, pricier than Biryani; same "elite" treatment language, distinct ruby/crimson color so the two are easy to tell apart live */
+.tier-Mandi{background:linear-gradient(135deg,#ff8bb0,#ff2e6b,#a80038);color:#fff;box-shadow:0 0 8px rgba(255,46,107,0.6);animation:mandiPillPulse 1.4s ease-in-out infinite}
+@keyframes mandiPillPulse{0%,100%{box-shadow:0 0 6px rgba(255,46,107,0.5),0 0 14px rgba(255,46,107,0.2)}50%{box-shadow:0 0 18px rgba(255,46,107,1),0 0 36px rgba(255,46,107,0.5)}}
+.player-card.tier-Mandi{border-color:rgba(255,46,107,0.45);background:rgba(255,46,107,0.05);animation:cardMandiGlow 1.8s ease-in-out infinite}
+.player-card.tier-Mandi:hover:not(.drafted):not(.on-block){border-color:rgba(255,46,107,0.8);background:rgba(255,46,107,0.1)}
+@keyframes cardMandiGlow{0%,100%{box-shadow:0 0 6px rgba(255,46,107,0.2),inset 0 0 8px rgba(255,46,107,0.04)}50%{box-shadow:0 0 16px rgba(255,46,107,0.45),inset 0 0 16px rgba(255,46,107,0.08)}}
+#auction-tier-pill.tier-Mandi{background:linear-gradient(135deg,#ff8bb0,#ff2e6b,#a80038);color:#fff;box-shadow:0 0 24px rgba(255,46,107,0.8),0 0 60px rgba(255,46,107,0.3);animation:mandiPillPulse 1.4s ease-in-out infinite}
+.mandi-active .player-name-big{background:linear-gradient(135deg,#ff8bb0,#ff2e6b,#ff0050,#ff2e6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:apNameShimmer 2s linear infinite;background-size:200% auto}
+.mandi-active{position:relative}
+.mandi-active::before{content:'\1F451 TOP TIER \1F451';position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-family:var(--fu);font-weight:700;font-size:0.65rem;letter-spacing:4px;color:#ff2e6b;white-space:nowrap;animation:apLabelPulse 1s ease-in-out infinite}
+.mandi-panel-glow{box-shadow:0 0 0 1px rgba(255,46,107,0.5),0 0 40px rgba(255,46,107,0.15),inset 0 0 40px rgba(255,46,107,0.04) !important;border-color:rgba(255,46,107,0.5) !important}
 #fireworks-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:850;opacity:0;transition:opacity 0.3s}
 #fireworks-canvas.active{opacity:1}
 .tier-Samosa{background:var(--tier-a);color:#fff}
@@ -229,6 +241,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .tier-count-badge.tier-Biscuit{background:rgba(34,214,138,0.08);color:var(--tier-c);border:1px solid rgba(34,214,138,0.25)}
 .tier-count-badge.tier-Gatorade{background:rgba(160,180,160,0.06);color:#a0c0a0;border:1px solid rgba(160,180,160,0.2)}
 .tier-count-badge.tier-D{background:rgba(143,160,192,0.08);color:var(--tier-d);border:1px solid rgba(143,160,192,0.2)}
+.tier-count-badge.tier-Mandi{background:rgba(255,46,107,0.12);color:#ff2e6b;border:1px solid rgba(255,46,107,0.35)}
 
 /* PLAYER POOL */
 .player-pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;max-height:480px;overflow-y:auto;padding-right:3px}
@@ -254,6 +267,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .filter-btn.active-Biscuit{border-color:var(--tier-c);color:var(--tier-c);background:rgba(34,214,138,0.06)}
 
 .filter-btn.active-Gatorade{border-color:#a0c0a0;color:#a0c0a0;background:rgba(160,192,160,0.08)}
+.filter-btn.active-Mandi{border-color:#ff2e6b;color:#ff2e6b;background:rgba(255,46,107,0.1)}
 
 /* TEAMS PANEL */
 .teams-panel{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:7px}
@@ -380,6 +394,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .rfbtn.rf-active-Biscuit{border-color:var(--tier-c);color:var(--tier-c);background:rgba(34,214,138,0.06);}
 .rfbtn.rf-active-Gatorade{border-color:#a0c0a0;color:#a0c0a0;background:rgba(160,192,160,0.06);}
 .rfbtn.rf-active-Captain{border-color:#b450f0;color:#b450f0;background:rgba(180,80,240,0.06);}
+.rfbtn.rf-active-Mandi{border-color:#ff2e6b;color:#ff2e6b;background:rgba(255,46,107,0.08);}
 .roster-sort-btns{display:flex;align-items:center;gap:4px;margin-left:auto;}
 .rsort{font-family:var(--fu);font-weight:700;font-size:0.58rem;letter-spacing:2px;padding:4px 9px;border-radius:3px;border:1px solid rgba(var(--fg-rgb),0.08);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;text-transform:uppercase;}
 .rsort:hover{color:var(--text);border-color:rgba(var(--fg-rgb),0.2);}
@@ -563,6 +578,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .ptier-Chai    {background:rgba(255,126,46,0.18);color:#ff7e2e;border:1px solid rgba(255,126,46,0.35)}
 .ptier-Biscuit    {background:rgba(34,214,138,0.15);color:#22d68a;border:1px solid rgba(34,214,138,0.3)}
 .ptier-Gatorade   {background:rgba(143,160,192,0.15);color:#8fa0c0;border:1px solid rgba(143,160,192,0.3)}
+.ptier-Mandi      {background:rgba(255,46,107,0.2);color:#ff6b9d;border:1px solid rgba(255,46,107,0.4)}
 
 
 /* ── ROSTER OVERLAY ─────────────────────────── */
@@ -584,6 +600,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .rfbtn.rf-active-Biscuit{border-color:var(--tier-c);color:var(--tier-c);background:rgba(34,214,138,0.06);}
 .rfbtn.rf-active-Gatorade{border-color:#a0c0a0;color:#a0c0a0;background:rgba(160,192,160,0.06);}
 .rfbtn.rf-active-Captain{border-color:#b450f0;color:#b450f0;background:rgba(180,80,240,0.06);}
+.rfbtn.rf-active-Mandi{border-color:#ff2e6b;color:#ff2e6b;background:rgba(255,46,107,0.08);}
 .roster-stats{font-family:var(--fu);font-size:0.68rem;letter-spacing:2px;color:var(--muted);white-space:nowrap;}
 .roster-body{padding:20px 28px 40px;}
 .roster-section{margin-bottom:28px;}
@@ -965,6 +982,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
       <div class="filter-bar" style="margin-bottom:12px;">
         <input type="text" id="player-search" placeholder="Search player name…">
         <button class="filter-btn" data-tier="ALL" id="filter-ALL">All</button>
+        <button class="filter-btn" data-tier="Mandi"  id="filter-Mandi">Mandi</button>
         <button class="filter-btn" data-tier="Biryani"  id="filter-Biryani">Biryani</button>
         <button class="filter-btn" data-tier="Samosa"   id="filter-Samosa">Samosa</button>
         <button class="filter-btn" data-tier="Chai"   id="filter-Chai">Chai</button>
@@ -1065,6 +1083,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     <div class="roster-filter-btns" id="roster-filter-btns">
       <button class="rfbtn rf-active" data-rf="ALL">All</button>
       <button class="rfbtn" data-rf="Captain">Captains</button>
+      <button class="rfbtn" data-rf="Mandi">Mandi</button>
       <button class="rfbtn" data-rf="Biryani">Biryani</button>
       <button class="rfbtn" data-rf="Samosa">Samosa</button>
       <button class="rfbtn" data-rf="Chai">Chai</button>
@@ -1239,7 +1258,6 @@ const ROSTER_SIZE   = 6;
 const MIN_BID_INC   = 25;
 const TIMER_SECS_LIVE = 30;
 function TIMER_SECS() { try { return (state && state.mockDraft) ? (typeof state.mockTimerSecs === 'number' ? state.mockTimerSecs : 1) : TIMER_SECS_LIVE; } catch(e) { return TIMER_SECS_LIVE; } }
-const MAX_BID       = 1200;
 // Tiered reserve: minimum budget to keep for remaining picks after winning current
 // 4 remaining: 1B+1C+2C- | 3 remaining: 2C+1C- | 2 remaining: 2C- | 1 remaining: 1C-
 const RESERVE_TABLE = { 0: 0, 1: 275, 2: 550, 3: 925, 4: 1350 };
@@ -1253,6 +1271,7 @@ function RESERVE_MIN(slotsAfter) {
 // recomputed from the actual fetched roster every time loadRosterConfig()
 // runs, so it's always accurate even after the roster is edited.
 const TIERS = {
+  'Mandi':   { count: 0, base: 1000 },
   'Biryani': { count: 0, base: 800 },
   'Samosa':  { count: 0, base: 650 },
   'Chai':    { count: 0, base: 475 },
@@ -1260,9 +1279,16 @@ const TIERS = {
   'Gatorade':{ count: 0, base: 275 },
 };
 
+// Max bid per tier before live bidding switches to the tiebreaker draw.
+// Mandi (a new top tier, pricier than Biryani) gets a higher ceiling;
+// everyone else uses the default.
+const MAX_BID_BY_TIER = { 'Mandi': 1400 };
+const DEFAULT_MAX_BID = 1200;
+function maxBidForTier(tier) { return MAX_BID_BY_TIER[tier] || DEFAULT_MAX_BID; }
+
 const ROUND_DEFS = [
   { id: 1, tier:'Samosa',    label: 'Round 1 \u2014 Samosa' },
-  { id: 2, tier: 'Chai+Biryani', label: 'Round 2 \u2014 Chai & Biryani' },
+  { id: 2, tier: 'Chai+Biryani+Mandi', label: 'Round 2 \u2014 Chai, Biryani & Mandi' },
   { id: 3, tier:'Biscuit',    label: 'Round 3 \u2014 Biscuit' },
   { id: 4, tier:'Gatorade',   label: 'Round 4 \u2014 Gatorade' },
   { id: 5, tier: null,   label: 'Fire Sale \u2014 Unsold Players' },
@@ -1282,7 +1308,8 @@ const CAPTAIN_PREMIUM = 0.25; // captains cost their tier's base price + this % 
 
 function captainCost(tier) {
   const base = (TIERS[tier] || TIERS['Biryani']).base;
-  return Math.round(base * (1 + CAPTAIN_PREMIUM));
+  const raw  = base * (1 + CAPTAIN_PREMIUM);
+  return Math.floor(raw / 25) * 25; // rounded DOWN to the nearest $25 — same increment every bid uses
 }
 
 // Fetches the roster (captains + players) from MongoDB via the API and
@@ -1402,10 +1429,10 @@ function generateTeams(players) {
 function buildRoundQueues(players) {
   const queues = {};
   var _rds = ROUND_DEFS.slice(0, 4); for (var _rdi = 0; _rdi < _rds.length; _rdi++) { var rd = _rds[_rdi];
-    if (rd.tier === 'Chai+Biryani') {
-      // All Chai and Biryani players combined then shuffled randomly
+    if (rd.tier === 'Chai+Biryani+Mandi') {
+      // All Chai, Biryani, and Mandi players combined then shuffled randomly
       var mixed = players
-        .filter(function(p){ return (p.tier === 'Chai' || p.tier === 'Biryani') && !p.isCaptain; })
+        .filter(function(p){ return (p.tier === 'Chai' || p.tier === 'Biryani' || p.tier === 'Mandi') && !p.isCaptain; })
         .map(function(p){ return p.id; });
       shuffle(mixed);
       queues[rd.id] = mixed;
@@ -1678,7 +1705,7 @@ function minBidForTeam(teamId) {
     ? player.currentBase
     : state.auction.currentBid + MIN_BID_INC;
 
-  if (next > MAX_BID) return null;
+  if (next > maxBidForTier(player.tier)) return null;
 
   const spotsAfter = teamAuctionSlotsLeft(team) - 1;
   const reserve    = RESERVE_MIN(spotsAfter);
@@ -1870,7 +1897,7 @@ function renderTeams() {
 function renderTierCounts() {
   const c = document.getElementById('tier-counts');
   c.innerHTML = '';
-  var _tiers = ['Biryani','Samosa','Chai','Biscuit','Gatorade']; for (var _tii = 0; _tii < _tiers.length; _tii++) { var tier = _tiers[_tii];
+  var _tiers = Object.keys(TIERS); for (var _tii = 0; _tii < _tiers.length; _tii++) { var tier = _tiers[_tii];
     const total     = state.players.filter(function(p){ return p.tier === tier && !p.isCaptain; }).length;
     const remaining = state.players.filter(function(p){ return p.tier === tier && !p.isCaptain && !p.drafted; }).length;
     c.insertAdjacentHTML('beforeend',
@@ -2009,7 +2036,8 @@ function renderAuctionBlock() {
 
   const badge = document.querySelector('.player-badge');
   if (badge) {
-    badge.className = 'player-badge tier-glow-' + player.tier + (player.tier === 'Biryani' ? ' biryani-active' : '');
+    badge.className = 'player-badge tier-glow-' + player.tier +
+      (player.tier === 'Biryani' ? ' biryani-active' : player.tier === 'Mandi' ? ' mandi-active' : '');
   }
   document.getElementById('auction-tier-pill').className = 'tier-pill tier-' + player.tier;
   document.getElementById('auction-player-name').textContent = player.name;
@@ -2050,10 +2078,11 @@ function renderAuctionBlock() {
   // A+ special treatment \u2014 glow the panel border
   var auctionPanelBox = document.querySelector('.auction-panel .panel-box');
   if (auctionPanelBox) {
+    auctionPanelBox.classList.remove('biryani-panel-glow', 'mandi-panel-glow');
     if (player.tier === 'Biryani') {
       auctionPanelBox.classList.add('biryani-panel-glow');
-    } else {
-      auctionPanelBox.classList.remove('biryani-panel-glow');
+    } else if (player.tier === 'Mandi') {
+      auctionPanelBox.classList.add('mandi-panel-glow');
     }
   }
 
@@ -2189,10 +2218,12 @@ function updateOverrideSliderBounds() {
   const slider = document.getElementById('td-override-price-slider');
   const numEl  = document.getElementById('td-override-price-num');
   if (!slider || !numEl) return;
-  // Fixed at MAX_BID — same $1,200 ceiling the live-bidding tiebreaker rule
-  // enforces. A team having more budget than that doesn't raise this cap.
-  slider.max = MAX_BID;
-  numEl.max  = MAX_BID;
+  // Same per-tier ceiling live bidding enforces (Mandi runs higher than the
+  // rest). A team having more budget than that doesn't raise this cap.
+  const player = state.auction.active ? getPlayer(state.auction.playerId) : null;
+  const cap = player ? maxBidForTier(player.tier) : DEFAULT_MAX_BID;
+  slider.max = cap;
+  numEl.max  = cap;
 }
 
 function updateOverrideBiryaniWarning(player) {
@@ -2211,17 +2242,18 @@ function submitTdOverrideAward() {
   if (!IS_TD) return;
   if (!state.auction.active) { toast('No player on the block.', 'danger'); return; }
 
-  const team  = selectedOverrideTeam();
-  const numEl = document.getElementById('td-override-price-num');
-  const price = parseInt(numEl && numEl.value, 10);
+  const team   = selectedOverrideTeam();
+  const numEl  = document.getElementById('td-override-price-num');
+  const price  = parseInt(numEl && numEl.value, 10);
+  const player = getPlayer(state.auction.playerId);
+  const cap    = maxBidForTier(player.tier);
 
   if (!team)              { toast('Pick a team first.', 'danger'); return; }
   if (isNaN(price) || price < 0) { toast('Enter a valid price.', 'danger'); return; }
-  if (price > MAX_BID)   { toast('Max is ' + fmt(MAX_BID) + ' \u2014 same cap as live bidding.', 'danger'); return; }
+  if (price > cap)   { toast('Max for ' + player.tier + ' is ' + fmt(cap) + ' \u2014 same cap as live bidding.', 'danger'); return; }
   if (teamAuctionSlotsLeft(team) <= 0) { toast(team.name + ' has a full roster.', 'danger'); return; }
   if (price > team.budget) { toast('Exceeds ' + team.name + '\u2019s remaining budget (' + fmt(team.budget) + ').', 'danger'); return; }
 
-  const player = getPlayer(state.auction.playerId);
   let warn = '';
   if (player.tier === 'Biryani' && team.biriyaniCount >= 1) {
     warn = team.name + ' already has a Biryani player \u2014 this breaks the 1-per-team cap. ';
@@ -2337,7 +2369,7 @@ function _doCancel() {
 
   fwStop();
   var apb = document.querySelector('.auction-panel .panel-box');
-  if (apb) apb.classList.remove('biryani-panel-glow');
+  if (apb) apb.classList.remove('biryani-panel-glow', 'mandi-panel-glow');
   state.auction.active        = false;
   state.auction.playerId      = null;
   state.auction.currentBid    = 0;
@@ -2382,7 +2414,7 @@ function _doMarkUnsold() {
 
   fwStop();
   var apb = document.querySelector('.auction-panel .panel-box');
-  if (apb) apb.classList.remove('biryani-panel-glow');
+  if (apb) apb.classList.remove('biryani-panel-glow', 'mandi-panel-glow');
   state.auction.active       = false;
   state.auction.playerId     = null;
   state.auction.currentBid   = 0;
@@ -2494,13 +2526,13 @@ function renderTiebreakerPanel() {
 
   btnsEl.innerHTML = '';
 
-  // All teams that CAN afford MAX_BID and aren't roster-full or Biryani blocked
+  // All teams that CAN afford this tier's max bid and aren't roster-full or Biryani blocked
   var eligibleTeams = state.teams.filter(function(t) {
     if (teamAuctionSlotsLeft(t) <= 0) return false;
     if (player.tier === 'Biryani' && t.biriyaniCount >= 1) return false;
     var spotsAfter = teamAuctionSlotsLeft(t) - 1;
     var reserve    = RESERVE_MIN(spotsAfter);
-    return MAX_BID + reserve <= t.budget;
+    return maxBidForTier(player.tier) + reserve <= t.budget;
   });
 
   eligibleTeams.forEach(function(team) {
@@ -2582,7 +2614,7 @@ function drawTiebreakerWinner() {
         if (parseInt(b.dataset.teamid) === winnerId) b.classList.add('winner-flash');
       });
       // Show winner overlay after brief pause
-      setTimeout(function() { showWinnerOverlay(winnerTeam, player, MAX_BID); }, 600);
+      setTimeout(function() { showWinnerOverlay(winnerTeam, player, maxBidForTier(player.tier)); }, 600);
     }
   }, interval);
 }
@@ -2616,7 +2648,7 @@ function confirmWinner() {
 function finalizeTiebreaker(teamId) {
   var player = getPlayer(state.auction.playerId);
   var team   = getTeam(teamId);
-  var price  = MAX_BID;
+  var price  = maxBidForTier(player.tier);
 
   state.undoStack.push({
     playerId:    player.id,
@@ -2654,7 +2686,7 @@ function finalizeTiebreaker(teamId) {
 
   fwStop();
   var apb = document.querySelector('.auction-panel .panel-box');
-  if (apb) apb.classList.remove('biryani-panel-glow');
+  if (apb) apb.classList.remove('biryani-panel-glow', 'mandi-panel-glow');
 
   checkAndAdvanceRound();
   saveState();
@@ -2680,8 +2712,8 @@ function placeBid(teamId) {
   state.auction.currentBid    = nextBid;
   state.auction.leadingTeamId = teamId;
 
-  // Check if we just hit MAX_BID \u2014 enter tiebreaker mode
-  if (nextBid >= MAX_BID) {
+  // Check if we just hit this tier's max bid \u2014 enter tiebreaker mode
+  if (nextBid >= maxBidForTier(getPlayer(state.auction.playerId).tier)) {
     clearInterval(timerInterval);
     state.auction.tiebreaker  = true;
     state.auction.tiedTeamIds = [teamId]; // first team in tie
@@ -3117,10 +3149,10 @@ function exportRoster() {
 
 function printRosterList() {
   // Build player list grouped by tier (captains excluded — they're pre-assigned)
-  var TIER_ORDER   = ['Biryani','Samosa','Chai','Biscuit','Gatorade'];
-  var TIER_COLOR   = {Biryani:'#d4a800',Samosa:'#e02040',Chai:'#d46000',Biscuit:'#18a060',Gatorade:'#6080a0'};
-  var TIER_BGLIGHT = {Biryani:'#fffbe6',Samosa:'#fff0f2',Chai:'#fff5ee',Biscuit:'#edfff6',Gatorade:'#f0f4f8'};
-  var TIER_BASE    = {Biryani:800,Samosa:650,Chai:475,Biscuit:325,Gatorade:275};
+  var TIER_ORDER   = Object.keys(TIERS);
+  var TIER_COLOR   = {Mandi:'#c81050',Biryani:'#d4a800',Samosa:'#e02040',Chai:'#d46000',Biscuit:'#18a060',Gatorade:'#6080a0'};
+  var TIER_BGLIGHT = {Mandi:'#fff0f5',Biryani:'#fffbe6',Samosa:'#fff0f2',Chai:'#fff5ee',Biscuit:'#edfff6',Gatorade:'#f0f4f8'};
+  var TIER_BASE    = {}; TIER_ORDER.forEach(function(t){ TIER_BASE[t] = TIERS[t].base; });
 
   var auctionable = state.players.filter(function(p){ return !p.isCaptain; });
 
@@ -3218,6 +3250,7 @@ function printRosterList() {
 
   var totalPlayers = auctionable.length;
   var biryaniCount = groups['Biryani'].length;
+  var mandiCount    = (groups['Mandi'] || []).length;
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
     '<title>FVL Fall 2026 — Player Roster</title>' +
@@ -3248,7 +3281,7 @@ function printRosterList() {
       '</div>' +
       '<div class="hdr-right">' +
         totalPlayers + ' auctionable players<br>' +
-        biryaniCount + ' Biryani &nbsp;·&nbsp; Max $1,200 bid<br>' +
+        biryaniCount + ' Biryani, ' + mandiCount + ' Mandi &nbsp;·&nbsp; Max bid $1,200 ($1,400 Mandi)<br>' +
         'Budget per team: $' + BUDGET.toLocaleString() + '<br>' +
         '<span style="color:#aaa;">Printed ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + '</span>' +
       '</div>' +
@@ -3594,6 +3627,7 @@ function showRules() {
   if (!body) return;
 
   var TIER_META = {
+    'Mandi':   {color:'#ff2e6b', bg:'rgba(255,46,107,0.15)'},
     'Biryani': {color:'#f0c040', bg:'rgba(240,192,64,0.15)'},
     'Samosa':  {color:'#f03050', bg:'rgba(240,48,80,0.15)'},
     'Chai':    {color:'#ff7e2e', bg:'rgba(255,126,46,0.15)'},
@@ -3659,7 +3693,7 @@ function showRules() {
         '<div class="rules-card">',
           '<div class="rules-card-label">Max Bid (Tiebreaker)</div>',
           '<div class="rules-card-value">$1,200</div>',
-          '<div class="rules-card-sub">Triggers random draw tiebreaker</div>',
+          '<div class="rules-card-sub">$1,400 for Mandi &mdash; triggers random draw</div>',
         '</div>',
       '</div>',
     '</div>',
@@ -3685,7 +3719,7 @@ function showRules() {
         '<li class="gold"><strong>Round 1 &mdash; Samosa:</strong> All ' + T['Samosa'].count + ' Samosa players are auctioned first.',
           '<span class="ex">Players are randomly ordered and nominated one by one.</span>',
         '</li>',
-        '<li class="gold"><strong>Round 2 &mdash; Chai &amp; Biryani:</strong> All ' + T['Chai'].count + ' Chai and ' + T['Biryani'].count + ' Biryani players are mixed together randomly.',
+        '<li class="gold"><strong>Round 2 &mdash; Chai, Biryani &amp; Mandi:</strong> All ' + T['Chai'].count + ' Chai, ' + T['Biryani'].count + ' Biryani, and ' + T['Mandi'].count + ' Mandi players are mixed together randomly.',
           '<span class="ex">You may land a top-tier Biryani player &mdash; or miss out if budget is depleted.</span>',
         '</li>',
         '<li><strong>Round 3 &mdash; Biscuit:</strong> All ' + T['Biscuit'].count + ' Biscuit players auctioned in random order.</li>',
@@ -3709,13 +3743,13 @@ function showRules() {
         '<li><strong>Timer:</strong> Each bid resets a 15-second countdown. If time expires with no new bid, the current leader wins the player.',
           '<span class="ex">Stay alert &mdash; the timer does not pause between bids.</span>',
         '</li>',
-        '<li class="warn"><strong>Max bid &amp; tiebreaker:</strong> If bidding reaches <strong>$1,200</strong>, the timer freezes. All interested teams self-select into a random draw. One winner is chosen by lot &mdash; no further bidding.',
-          '<span class="ex">Example: 4 teams all want the same Biryani player at $1,200. All 4 click "Enter Draw." A random winner is picked live.</span>',
+        '<li class="warn"><strong>Max bid &amp; tiebreaker:</strong> If bidding reaches <strong>$1,200</strong> ($1,400 for Mandi), the timer freezes. All interested teams self-select into a random draw. One winner is chosen by lot &mdash; no further bidding.',
+          '<span class="ex">Example: 4 teams all want the same Biryani player at $1,200. All 4 click "Enter Draw." A random winner is picked live. A Mandi player instead freezes at $1,400.</span>',
         '</li>',
         '<li><strong>Mark Unsold:</strong> The nominating captain can declare a player unsold (if no bids yet). The player is queued for Fire Sale at a reduced price.',
         '</li>',
         '<li class="teal"><strong>TD Manual Override:</strong> When logged in as Tournament Director, a player on the block can be assigned directly to any team at any price, skipping live bidding entirely \u2014 for when time is short and the auction needs to move fast.',
-          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed $1,200 \u2014 same cap as live bidding. NOT checked: the Biryani cap \u2014 a warning shows, but the TD can override it.</span>',
+          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed the tier\'s max bid ($1,200, or $1,400 for Mandi) \u2014 same cap as live bidding. NOT checked: the Biryani cap \u2014 a warning shows, but the TD can override it.</span>',
         '</li>',
       '</ul>',
     '</div>',
@@ -3759,7 +3793,7 @@ function showRules() {
       '<div class="rules-section-title">Rosters &amp; Captains</div>',
       '<ul class="rules-list">',
         '<li><strong>' + TEAM_COUNT + ' teams</strong> each captained by a pre-selected player. A captain\'s cost is <strong>their tier\'s base price + a 25% premium</strong>, deducted from their own team\'s $4,200 budget before the auction begins.',
-          '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($475 base) costs $475 + 25% = $594.</span>',
+          '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($475 base) costs $475 + 25% = $593.75, rounded <strong>down</strong> to the nearest $25 \u2014 <strong>$575</strong>. A Mandi-tier captain ($1,000 base) costs $1,000 + 25% = <strong style="color:#ff2e6b;">$1,250</strong>.</span>',
         '</li>',
         '<li><strong>Each team drafts 5 players</strong> (1 captain + 5 = 6 total on your roster).',
         '</li>',
@@ -3887,7 +3921,7 @@ function resetDraft() {
 
 function setTierFilter(tier) {
   state.filterTier = tier;
-  ['ALL','Biryani','Samosa','Chai','Biscuit','Gatorade'].forEach(function(t) {
+  ['ALL'].concat(Object.keys(TIERS)).forEach(function(t) {
     var btnId = 'filter-' + t;
     var btn = document.getElementById(btnId);
     if (!btn) return;
@@ -4007,7 +4041,7 @@ function attachEventListeners() {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 
-  ['ALL','Biryani','Samosa','Chai','Biscuit','Gatorade'].forEach(function(t) {
+  ['ALL'].concat(Object.keys(TIERS)).forEach(function(t) {
     var btnId = 'filter-' + t;
     var btn = document.getElementById(btnId);
     if (btn) btn.addEventListener('click', function(){ setTierFilter(t); });
