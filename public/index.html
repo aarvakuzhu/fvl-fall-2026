@@ -1172,6 +1172,23 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
       </p>
     </div>
 
+    <div class="rules-section">
+      <div class="rules-section-title">Team Budgets \u2014 Manual Adjustment</div>
+      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;max-width:560px;">
+        Grant or deduct budget for a specific team mid-auction, for any operational reason
+        (correcting an error, a ruling, a make-good, etc.). Applies immediately and persists
+        like any other draft action \u2014 visible to everyone via the budget sidebar right away.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <select id="admin-budget-team" class="gate-input" style="max-width:230px;flex:1;min-width:160px;"></select>
+        <input id="admin-budget-amount" type="number" class="gate-input" style="max-width:130px;" step="25" placeholder="+/- amount">
+        <input id="admin-budget-reason" type="text" class="gate-input" style="flex:2;min-width:180px;" placeholder="Reason (optional, shown in log)" maxlength="120">
+        <button id="admin-budget-apply-btn" class="btn btn-gold" style="padding:9px 20px;white-space:nowrap;">Apply</button>
+      </div>
+
+      <div id="admin-budget-log" style="margin-top:16px;font-family:var(--fu);font-size:0.75rem;color:var(--text2);line-height:1.8;max-height:220px;overflow-y:auto;"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1541,6 +1558,7 @@ function currentStatePayload() {
     round:     state.round,
     history:   state.history,
     undoStack: state.undoStack,
+    budgetLog: state.budgetLog,
     mockDraft: state.mockDraft,
     mockTimerSecs: state.mockTimerSecs,
   };
@@ -1618,6 +1636,7 @@ function applyRemoteState(s) {
     state.round     = s.round;
     state.history   = Array.isArray(s.history)   ? s.history   : [];
     state.undoStack = Array.isArray(s.undoStack) ? s.undoStack : [];
+    state.budgetLog = Array.isArray(s.budgetLog) ? s.budgetLog : [];
     if (typeof s.mockDraft     !== 'undefined') state.mockDraft     = s.mockDraft;
     if (typeof s.mockTimerSecs !== 'undefined') state.mockTimerSecs = s.mockTimerSecs;
     sortTeams();
@@ -1685,6 +1704,7 @@ function applyStateBlob(s) {
   state.round     = s.round;
   state.history   = Array.isArray(s.history)   ? s.history   : [];
   state.undoStack = Array.isArray(s.undoStack) ? s.undoStack : [];
+  state.budgetLog = Array.isArray(s.budgetLog) ? s.budgetLog : [];
   sortTeams();
   if (typeof s.mockDraft     !== 'undefined') state.mockDraft     = s.mockDraft;
   if (typeof s.mockTimerSecs !== 'undefined') state.mockTimerSecs = s.mockTimerSecs;
@@ -3782,6 +3802,8 @@ function showRules() {
         '</li>',
         '<li><strong>Unspent budget</strong> does not carry over. Use it or lose it.',
         '</li>',
+        '<li class="teal"><strong>TD Manual Budget Adjustment:</strong> When logged in as Tournament Director, a team\'s budget can be granted or deducted mid-auction for any operational reason (correcting an error, a ruling, etc.), via Admin \u2192 Team Budgets. Applies immediately and is logged with a reason and timestamp.',
+        '</li>',
       '</ul>',
     '</div>',
 
@@ -3858,6 +3880,7 @@ function showAdmin() {
   document.getElementById('admin-overlay').style.display = '';
   document.body.style.overflow = 'hidden';
   loadAdminStats();
+  renderAdminBudgetPanel();
 }
 
 function closeAdmin() {
@@ -3907,6 +3930,89 @@ async function reseedRosterFromUI() {
   } catch (e) {
     toast('⚠ Reseed failed — check your connection.', 'danger');
   }
+}
+
+/* ── ADMIN: manual team budget adjustment ── */
+
+function renderAdminBudgetPanel() {
+  const sel = document.getElementById('admin-budget-team');
+  if (sel) {
+    sel.innerHTML = state.teams.map(function(t) {
+      return '<option value="' + t.id + '">' + t.name.replace(/</g,'&lt;') + ' \u2014 ' + fmt(t.budget) + '</option>';
+    }).join('');
+  }
+  renderAdminBudgetLog();
+}
+
+function renderAdminBudgetLog() {
+  const el = document.getElementById('admin-budget-log');
+  if (!el) return;
+  const log = state.budgetLog || [];
+  if (log.length === 0) {
+    el.innerHTML = '<span style="color:var(--muted);">No manual adjustments yet.</span>';
+    return;
+  }
+  el.innerHTML = log.slice().reverse().map(function(entry) {
+    const sign  = entry.amount >= 0 ? '+' : '\u2212';
+    const color = entry.amount >= 0 ? 'var(--success)' : 'var(--danger)';
+    const when  = new Date(entry.at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--border);">' +
+      '<strong style="color:' + color + ';">' + sign + fmt(Math.abs(entry.amount)) + '</strong>' +
+      ' \u2192 <strong style="color:var(--text);">' + entry.teamName.replace(/</g,'&lt;') + '</strong>' +
+      (entry.reason ? ' \u2014 ' + entry.reason.replace(/</g,'&lt;') : '') +
+      '<span style="color:var(--muted);float:right;">' + when + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function applyBudgetAdjustment() {
+  if (!IS_TD) return;
+  const teamSel   = document.getElementById('admin-budget-team');
+  const amountEl  = document.getElementById('admin-budget-amount');
+  const reasonEl  = document.getElementById('admin-budget-reason');
+
+  const team   = teamSel ? getTeam(parseInt(teamSel.value, 10)) : null;
+  const amount = amountEl ? parseInt(amountEl.value, 10) : NaN;
+  const reason = reasonEl ? reasonEl.value.trim() : '';
+
+  if (!team) { toast('Pick a team first.', 'danger'); return; }
+  if (isNaN(amount) || amount === 0) { toast('Enter a non-zero amount.', 'danger'); return; }
+  if (amount < 0 && team.budget + amount < 0) {
+    toast('That would take ' + team.name + ' below $0.', 'danger');
+    return;
+  }
+
+  const verb = amount > 0 ? 'Grant' : 'Deduct';
+  openModal(
+    verb + ' Budget',
+    verb + ' ' + fmt(Math.abs(amount)) + (amount > 0 ? ' to ' : ' from ') + team.name +
+      (team.budget !== undefined ? ' (currently ' + fmt(team.budget) + ')' : '') +
+      (reason ? '? Reason: "' + reason + '"' : '?'),
+    function() { _doApplyBudgetAdjustment(team.id, amount, reason); }
+  );
+}
+
+function _doApplyBudgetAdjustment(teamId, amount, reason) {
+  const team = getTeam(teamId);
+  if (!team) return;
+
+  team.budget += amount;
+
+  state.budgetLog.push({
+    teamId:   team.id,
+    teamName: team.name,
+    amount:   amount,
+    reason:   reason || '',
+    at:       Date.now(),
+  });
+
+  document.getElementById('admin-budget-amount').value = '';
+  document.getElementById('admin-budget-reason').value = '';
+
+  saveState();
+  renderBudgetSidebar();
+  renderAdminBudgetPanel();
+  toast('✓ ' + (amount > 0 ? '+' : '\u2212') + fmt(Math.abs(amount)) + ' applied to ' + team.name + '.', 'success');
 }
 
 function exportCSV() {
@@ -4036,6 +4142,7 @@ function attachEventListeners() {
       reseedRosterFromUI
     );
   });
+  document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
 
   // TD manual override controls
   var ovTeam   = document.getElementById('td-override-team');
@@ -4201,6 +4308,7 @@ function freshStart() {
   };
   state.history   = [];
   state.undoStack = [];
+  state.budgetLog = [];
   state.auction   = {
     active:        false,
     playerId:      null,
