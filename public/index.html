@@ -19,6 +19,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
 :root{
+  --header-h: 60px; /* kept in sync with .app-header's real rendered height by JS below, so anything anchored to it (sidebar, mock banner) tracks a header that wraps to 2 rows on narrower desktop widths */
   --ink:#05080f;--surface:#0d1425;--surface2:#111d34;--surface3:#172240;
   --border:rgba(var(--fg-rgb),0.08);--border2:rgba(var(--fg-rgb),0.14);
   --text:#eef2ff;--text2:#8fa0c0;--muted:#4a5a80;
@@ -123,7 +124,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px}
 
 /* HEADER */
-.app-header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;gap:12px;flex-wrap:wrap;background:rgba(var(--ink-rgb),0.97);border-bottom:1px solid var(--border2);box-shadow:0 1px 0 rgba(240,192,64,0.4),0 4px 20px rgba(0,0,0,0.5)}
+.app-header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;min-height:60px;gap:10px 12px;flex-wrap:wrap;background:rgba(var(--ink-rgb),0.97);border-bottom:1px solid var(--border2);box-shadow:0 1px 0 rgba(240,192,64,0.4),0 4px 20px rgba(0,0,0,0.5)}
 .logo{font-family:var(--fd);font-size:1.8rem;letter-spacing:3px;color:var(--gold);line-height:1;text-transform:uppercase}
 .logo span{color:var(--text);font-size:1rem;letter-spacing:5px;opacity:0.8;display:block;margin-top:-4px}
 .header-actions{display:flex;gap:6px;flex-wrap:wrap}
@@ -316,7 +317,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .draft-complete-banner.show{display:block}
 .draft-complete-banner h2{font-family:var(--fd);font-size:2.2rem;color:var(--success);letter-spacing:4px}
 
-.budget-sidebar{grid-column:2;grid-row:1/99;position:sticky;top:68px;height:fit-content;max-height:calc(100vh - 84px);overflow-y:auto;align-self:start;width:160px;flex-shrink:0}
+.budget-sidebar{grid-column:2;grid-row:1/99;position:sticky;top:calc(var(--header-h) + 8px);height:fit-content;max-height:calc(100vh - var(--header-h) - 24px);overflow-y:auto;align-self:start;width:160px;flex-shrink:0}
 .budget-sidebar .panel-box{padding:8px 7px}
 .budget-row{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:3px;gap:4px;border-bottom:1px solid var(--border)}
 .budget-row:last-child{border-bottom:none}
@@ -343,7 +344,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .mock-timer-btn{font-family:var(--fu);font-size:0.68rem;font-weight:700;padding:2px 6px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;letter-spacing:1px}
 .mock-timer-btn:hover{border-color:var(--border2);color:var(--text)}
 .mock-timer-btn.active{border-color:#ff7e2e;color:#ff7e2e;background:rgba(255,126,46,0.12)}
-.mock-banner{display:none;position:fixed;top:60px;left:0;right:0;z-index:99;background:rgba(255,126,46,0.12);border-bottom:1px solid rgba(255,126,46,0.4);padding:4px 0;text-align:center;font-family:var(--fu);font-size:0.7rem;letter-spacing:3px;text-transform:uppercase;color:#ff7e2e}
+.mock-banner{display:none;position:fixed;top:var(--header-h);left:0;right:0;z-index:99;background:rgba(255,126,46,0.12);border-bottom:1px solid rgba(255,126,46,0.4);padding:4px 0;text-align:center;font-family:var(--fu);font-size:0.7rem;letter-spacing:3px;text-transform:uppercase;color:#ff7e2e}
 .mock-banner.show{display:block}
 
 /* RESPONSIVE */
@@ -4152,6 +4153,26 @@ function freshStart() {
   };
   saveState();
 }
+
+// Keeps --header-h in sync with the header's real rendered height, since it
+// wraps to 2 rows on narrower desktop widths (too many buttons for one
+// line) — anything anchored below it (budget sidebar, mock banner) reads
+// this instead of a hardcoded pixel value, so it never overlaps regardless
+// of how many buttons the header ends up with.
+function syncHeaderHeightVar() {
+  var hdr = document.querySelector('.app-header');
+  if (!hdr) return;
+  document.documentElement.style.setProperty('--header-h', hdr.offsetHeight + 'px');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  syncHeaderHeightVar();
+  var hdr = document.querySelector('.app-header');
+  if (hdr && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncHeaderHeightVar).observe(hdr);
+  } else {
+    window.addEventListener('resize', syncHeaderHeightVar);
+  }
+});
 
 document.addEventListener('DOMContentLoaded', bootstrapGate);
 
