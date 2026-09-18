@@ -1364,10 +1364,11 @@ function generateTeams(players) {
     const defaultName = (captain && captain.name)
       ? captain.name.split(' ')[0] + "'s Team"
       : `Team ${i + 1}`;
+    const startingBudget = captain ? (TEAM_BUDGETS[captain.name] || BUDGET) : BUDGET;
     return {
       id:      i,
       name:    defaultName,
-      budget:  captain ? (TEAM_BUDGETS[captain.name] || BUDGET) : BUDGET,
+      budget:  captain ? (startingBudget - captain.finalPrice) : startingBudget,
       spent:   captain ? captain.finalPrice : 0,
       roster:  captain ? [{
         playerId:   captain.id,
