@@ -45,12 +45,20 @@ time and builds `CAPTAIN_NAMES`, `CAPTAIN_TIERS`, `CAPTAIN_PICS`,
 from `data/roster-fall-2026.json` — no manual step needed the first time.
 
 **Updating it later** — pick one:
-1. Edit `data/roster-fall-2026.json` (or generate a new one from an updated
+1. **Admin screen (in the app):** log in as TD, click **⚙ Admin** in the
+   header, then **Reseed Roster from Repo File**. This re-reads whatever's
+   currently committed at `data/roster-fall-2026.json` in GitHub and
+   overwrites the live roster with it — no local setup needed, just push
+   the updated JSON to the repo first, then click the button.
+2. Edit `data/roster-fall-2026.json` (or generate a new one from an updated
    spreadsheet export), then run `npm run seed:roster` locally (needs
-   `MONGODB_URI` in `.env`). This overwrites the live roster.
-2. `PUT /api/roster` directly with `{ captains: [...], players: [...] }` and
-   an `x-td-token` header (obtained from `POST /api/td/auth`) — the same
-   auth the official draft uses.
+   `MONGODB_URI` in `.env`).
+3. `PUT /api/roster` directly with `{ captains: [...], players: [...] }` and
+   an `x-td-token` header (obtained from `POST /api/td/auth`).
+
+Whichever path you use, anyone already in the app (captains practicing, the
+TD, spectators) needs to **reload the page** to see the change — it isn't
+pushed live automatically.
 
 Each person (captain or player) is `{ name, number, tier, pic, skills,
 remarks }`. `tier` must be one of the `TIERS` keys in `public/index.html`
@@ -120,7 +128,8 @@ models/Roster.js       Mongoose schema for the roster (captains + players)
 routes/api.js          /api/state/:draftId (GET/PUT/DELETE), /api/roster (GET/PUT), /api/td/auth (POST)
 utils/tdAuth.js         TD password check + stateless token
 utils/constants.js       Shared constants (ROSTER_ID)
-scripts/seed-roster.js   Reseed the roster from a JSON file — the "update it later" path
+utils/rosterSeed.js     Reads/validates the bundled roster JSON (shared by boot seed, the Admin screen, and the CLI script)
+scripts/seed-roster.js   Reseed the roster from a JSON file — the CLI path for updating it
 data/roster-fall-2026.json  The current roster — captains + players, editable, versioned in Git
 public/index.html      The draft board UI + client-side auction logic
 render.yaml             Render Blueprint

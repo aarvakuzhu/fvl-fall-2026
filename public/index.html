@@ -815,6 +815,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     <button class="btn btn-outline btn-sm" id="btn-undo" disabled>↩ Undo</button>
     <button class="btn btn-outline btn-sm" id="btn-poster">🏆 Teams</button>
     <button class="btn btn-outline btn-sm" id="btn-export">⬇ Export CSV</button>
+    <button class="btn btn-outline btn-sm" id="btn-admin" style="display:none;">⚙ Admin</button>
     <button class="btn btn-danger btn-sm" id="btn-reset">⟳ Reset</button>
     <button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">🌙</button>
   </div>
@@ -1098,6 +1099,40 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 
     <!-- Rules content injected by JS -->
     <div id="rules-body"></div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ADMIN OVERLAY (Tournament Director only)
+════════════════════════════════════════════════════ -->
+<div id="admin-overlay" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(var(--ink-rgb),0.96);overflow-y:auto;">
+  <div style="max-width:720px;margin:0 auto;padding:32px 24px 56px;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;gap:16px;">
+      <div>
+        <div style="font-family:var(--fd);font-size:0.65rem;letter-spacing:8px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Fowler Volleyball League</div>
+        <div style="font-family:var(--fd);font-size:2.4rem;letter-spacing:4px;color:var(--gold);line-height:1;">ADMIN</div>
+        <div style="font-family:var(--fd);font-size:0.75rem;letter-spacing:3px;color:var(--muted);margin-top:6px;">Tournament Director tools</div>
+        <div style="width:80px;height:2px;background:linear-gradient(90deg,var(--gold),transparent);margin-top:12px;"></div>
+      </div>
+      <button id="admin-close-btn" style="background:rgba(var(--fg-rgb),0.06);border:1px solid rgba(var(--fg-rgb),0.12);color:var(--text);border-radius:4px;padding:8px 18px;cursor:pointer;font-family:var(--fu);font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;flex-shrink:0;margin-top:4px;">✕ Close</button>
+    </div>
+
+    <div class="rules-section">
+      <div class="rules-section-title">Roster</div>
+      <div id="admin-roster-stats" style="font-family:var(--fu);font-size:0.85rem;color:var(--text2);line-height:1.9;">Loading&hellip;</div>
+
+      <button id="admin-reseed-btn" class="btn btn-danger" style="margin-top:18px;padding:10px 24px;">⟳ Reseed Roster from Repo File</button>
+      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-top:10px;line-height:1.6;max-width:520px;">
+        Overwrites the live roster with whatever is currently committed at
+        <code style="color:var(--text2);">data/roster-fall-2026.json</code> in the GitHub repo.
+        Use this after pushing an updated roster file instead of running the seed script locally.
+        Captains and players already using the app need to <strong style="color:var(--text);">reload the page</strong> to see the change —
+        this does not push live to anyone automatically.
+      </p>
+    </div>
 
   </div>
 </div>
@@ -3640,6 +3675,63 @@ function closeRules() {
   document.body.style.overflow = '';
 }
 
+/* ── ADMIN (Tournament Director only) ── */
+
+function showAdmin() {
+  document.getElementById('admin-overlay').style.display = '';
+  document.body.style.overflow = 'hidden';
+  loadAdminStats();
+}
+
+function closeAdmin() {
+  var el = document.getElementById('admin-overlay');
+  if (el) el.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function loadAdminStats() {
+  const el = document.getElementById('admin-roster-stats');
+  if (!el) return;
+  el.innerHTML = 'Loading&hellip;';
+  try {
+    const res = await fetch('/api/roster');
+    const body = await res.json();
+    const captains = body.captains || [];
+    const players  = body.players  || [];
+    const tierCounts = {};
+    players.forEach(p => { tierCounts[p.tier] = (tierCounts[p.tier] || 0) + 1; });
+    const tierLine = Object.keys(tierCounts).sort().map(t => t + ': ' + tierCounts[t]).join(' &middot; ');
+    const updated = body.updatedAt ? new Date(body.updatedAt).toLocaleString() : 'never';
+
+    el.innerHTML =
+      '<div><strong style="color:var(--text);">' + captains.length + '</strong> captains &middot; ' +
+      '<strong style="color:var(--text);">' + players.length + '</strong> players</div>' +
+      '<div style="margin-top:4px;">' + (tierLine || 'No players loaded') + '</div>' +
+      '<div style="margin-top:8px;color:var(--muted);">Last updated: ' + updated + '</div>';
+  } catch (e) {
+    el.textContent = 'Could not load roster stats.';
+  }
+}
+
+async function reseedRosterFromUI() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  try {
+    const res = await fetch('/api/roster/reseed', {
+      method: 'POST',
+      headers: { 'x-td-token': TD_TOKEN },
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      toast('⚠ Reseed failed: ' + (body.error || res.status), 'danger');
+      return;
+    }
+    toast('✓ Roster reseeded: ' + body.captains + ' captains, ' + body.players + ' players. Everyone needs to reload to see it.', 'info', 6000);
+    loadAdminStats();
+  } catch (e) {
+    toast('⚠ Reseed failed — check your connection.', 'danger');
+  }
+}
+
 function exportCSV() {
   const rows = [['Team','Captain','Budget Remaining','Total Spent','Player','Tier','Price Paid']];
 
@@ -3753,6 +3845,19 @@ function attachEventListeners() {
   document.getElementById('rules-close-btn').addEventListener('click', closeRules);
   document.getElementById('rules-overlay').addEventListener('click', function(e) {
     if (e.target === document.getElementById('rules-overlay')) closeRules();
+  });
+
+  document.getElementById('btn-admin').addEventListener('click', showAdmin);
+  document.getElementById('admin-close-btn').addEventListener('click', closeAdmin);
+  document.getElementById('admin-overlay').addEventListener('click', function(e) {
+    if (e.target === document.getElementById('admin-overlay')) closeAdmin();
+  });
+  document.getElementById('admin-reseed-btn').addEventListener('click', function() {
+    openModal(
+      'Reseed Roster',
+      'This overwrites the live roster with data/roster-fall-2026.json from the repo. Captains/players won\'t see it until they reload. Continue?',
+      reseedRosterFromUI
+    );
   });
   document.getElementById('btn-poster').addEventListener('click', openPoster);
   document.getElementById('btn-export').addEventListener('click', exportCSV);
@@ -4061,6 +4166,9 @@ function renderModeBanner() {
     try { sessionStorage.removeItem('fvl_td_token'); } catch(e) {}
     location.reload();
   });
+
+  const adminBtn = document.getElementById('btn-admin');
+  if (adminBtn) adminBtn.style.display = IS_TD ? '' : 'none';
 }
 
 /* \u2500\u2500 FIREWORKS ENGINE \u2500\u2500 */

@@ -9,11 +9,10 @@
 //   node scripts/seed-roster.js path/to/other.json
 
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
 const mongoose = require('mongoose');
 const Roster = require('../models/Roster');
 const { ROSTER_ID } = require('../utils/constants');
+const { readSeedFile } = require('../utils/rosterSeed');
 
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
@@ -21,17 +20,12 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
-const filePath = process.argv[2] || path.join(__dirname, '..', 'data', 'roster-fall-2026.json');
+const filePath = process.argv[2]; // optional override; defaults to data/roster-fall-2026.json
 
 async function main() {
-  if (!fs.existsSync(filePath)) {
-    console.error('Roster file not found:', filePath);
-    process.exit(1);
-  }
-
-  const { captains, players } = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  if (!Array.isArray(captains) || !Array.isArray(players)) {
-    console.error('Roster JSON must have "captains" and "players" arrays.');
+  const seed = readSeedFile(filePath);
+  if (!seed) {
+    console.error('Roster file not found:', filePath || '(default: data/roster-fall-2026.json)');
     process.exit(1);
   }
 
@@ -40,11 +34,11 @@ async function main() {
 
   const doc = await Roster.findOneAndUpdate(
     { rosterId: ROSTER_ID },
-    { rosterId: ROSTER_ID, captains, players },
+    { rosterId: ROSTER_ID, captains: seed.captains, players: seed.players },
     { upsert: true, new: true }
   );
 
-  console.log(`Seeded roster "${ROSTER_ID}" from ${filePath}: ${doc.captains.length} captains, ${doc.players.length} players.`);
+  console.log(`Seeded roster "${ROSTER_ID}" from ${seed.filePath}: ${doc.captains.length} captains, ${doc.players.length} players.`);
   await mongoose.disconnect();
 }
 

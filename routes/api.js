@@ -4,6 +4,7 @@ const DraftState = require('../models/DraftState');
 const Roster = require('../models/Roster');
 const { OFFICIAL_DRAFT_ID, checkPassword, isValidToken, VALID_TOKEN } = require('../utils/tdAuth');
 const { ROSTER_ID } = require('../utils/constants');
+const { readSeedFile, DEFAULT_SEED_PATH } = require('../utils/rosterSeed');
 
 // POST /api/td/auth  { password } -> { token } on success, 401 otherwise.
 // The token is the same for everyone (see utils/tdAuth.js) — anyone who
@@ -95,6 +96,16 @@ router.delete('/state/:draftId?', requireTdForOfficial, async (req, res) => {
 // require a valid TD token — same trust level as running the official
 // auction, since the roster is shared, canonical data everyone draws from.
 
+// Shared TD-only gate, used by anything that writes shared/canonical data:
+// the official draft, the roster, and reseeding the roster.
+function requireTd(req, res, next) {
+  const token = req.get('x-td-token');
+  if (!isValidToken(token)) {
+    return res.status(403).json({ error: 'Tournament Director password required' });
+  }
+  next();
+}
+
 // GET /api/roster -> { rosterId, captains, players, updatedAt } or empty arrays if not seeded yet
 router.get('/roster', async (req, res) => {
   try {
@@ -108,13 +119,7 @@ router.get('/roster', async (req, res) => {
 });
 
 // PUT /api/roster  { captains, players } -> upserts the whole roster (TD only)
-router.put('/roster', (req, res, next) => {
-  const token = req.get('x-td-token');
-  if (!isValidToken(token)) {
-    return res.status(403).json({ error: 'Tournament Director password required to update the roster' });
-  }
-  next();
-}, async (req, res) => {
+router.put('/roster', requireTd, async (req, res) => {
   try {
     const { captains, players } = req.body || {};
     if (!Array.isArray(captains) || !Array.isArray(players)) {
@@ -129,6 +134,29 @@ router.put('/roster', (req, res, next) => {
   } catch (err) {
     console.error('PUT /roster error:', err);
     res.status(500).json({ error: 'Failed to save roster' });
+  }
+});
+
+// POST /api/roster/reseed -> re-reads the bundled data/roster-fall-2026.json
+// (whatever is currently committed in the repo) and overwrites the live
+// roster with it. This is what the Admin screen's "Reseed" button calls —
+// the UI equivalent of running `npm run seed:roster` locally, for a TD who
+// doesn't have a local dev setup.
+router.post('/roster/reseed', requireTd, async (req, res) => {
+  try {
+    const seed = readSeedFile();
+    if (!seed) {
+      return res.status(404).json({ error: `No seed file found on the server at ${DEFAULT_SEED_PATH}` });
+    }
+    const doc = await Roster.findOneAndUpdate(
+      { rosterId: ROSTER_ID },
+      { rosterId: ROSTER_ID, captains: seed.captains, players: seed.players },
+      { upsert: true, new: true }
+    );
+    res.json({ ok: true, captains: doc.captains.length, players: doc.players.length, updatedAt: doc.updatedAt, source: seed.filePath });
+  } catch (err) {
+    console.error('POST /roster/reseed error:', err);
+    res.status(500).json({ error: 'Failed to reseed roster' });
   }
 });
 
