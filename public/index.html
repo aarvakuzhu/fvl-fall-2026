@@ -899,6 +899,22 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
                     <button class="btn btn-gold" id="btn-draw-winner" style="display:none;font-size:1rem;padding:10px 28px;letter-spacing:2px;">🎲 DRAW WINNER</button>
                   </div>
                 </div>
+
+                <!-- TD MANUAL OVERRIDE — hidden unless logged in as TD; skips live
+                     bidding entirely and awards the on-block player directly. -->
+                <div id="td-override-panel" style="display:none;width:100%;margin-top:16px;padding-top:14px;border-top:1px dashed var(--border2);">
+                  <div style="text-align:center;margin-bottom:10px;">
+                    <span style="font-family:var(--fu);font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">⚡ Manual Override</span>
+                    <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">Skip live bidding — assign this player directly</div>
+                  </div>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;">
+                    <select id="td-override-team" class="gate-input" style="max-width:230px;flex:1;min-width:160px;"></select>
+                    <input id="td-override-price-num" type="number" class="gate-input" style="max-width:110px;" step="25" min="0" inputmode="numeric">
+                    <button class="btn btn-gold" id="td-override-award-btn" style="padding:8px 22px;white-space:nowrap;">Award</button>
+                  </div>
+                  <input id="td-override-price-slider" type="range" style="width:100%;margin-top:10px;accent-color:var(--gold);" min="0" max="1200" step="25" value="0">
+                  <div id="td-override-warning" style="display:none;text-align:center;font-size:0.7rem;color:var(--danger);margin-top:6px;"></div>
+                </div>
               </div>
             </div>
 
@@ -1443,6 +1459,7 @@ let state = {
 };
 
 let timerInterval = null;
+let _tdOverridePlayerId = null; // guards against wiping the TD's in-progress typed price on every render tick
 
 const LS_KEY_PREFIX = 'fvl_fall2026_v1'; // local fallback cache only — MongoDB via the API is the source of truth
 const OFFICIAL_DRAFT_ID = 'fvl-fall-2026';
@@ -2122,6 +2139,102 @@ function renderAuctionBlock() {
   container.querySelectorAll('.team-bid-btn:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => placeBid(parseInt(btn.dataset.teamid)));
   });
+
+  renderTdOverridePanel(player);
+}
+
+function renderTdOverridePanel(player) {
+  const panel = document.getElementById('td-override-panel');
+  if (!panel) return;
+
+  if (!IS_TD) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const sel    = document.getElementById('td-override-team');
+  const numEl  = document.getElementById('td-override-price-num');
+  const slider = document.getElementById('td-override-price-slider');
+  const warnEl = document.getElementById('td-override-warning');
+  if (!sel || !numEl || !slider) return;
+
+  const eligibleTeams = state.teams.filter(t => teamAuctionSlotsLeft(t) > 0);
+
+  // Only reset the team list / default price when a NEW player hits the
+  // block — not on every render (the timer ticks every second and would
+  // otherwise wipe out whatever the TD is mid-typing).
+  if (_tdOverridePlayerId !== player.id) {
+    _tdOverridePlayerId = player.id;
+
+    sel.innerHTML = eligibleTeams.map(t =>
+      `<option value="${t.id}">${t.name.replace(/</g,'&lt;')} (${fmt(t.budget)} left)</option>`
+    ).join('');
+
+    const defaultPrice = player.currentBase;
+    numEl.value = defaultPrice;
+    updateOverrideSliderBounds();
+    slider.value = defaultPrice;
+    warnEl.style.display = 'none';
+  }
+
+  updateOverrideBiryaniWarning(player);
+}
+
+function selectedOverrideTeam() {
+  const sel = document.getElementById('td-override-team');
+  if (!sel || sel.value === '') return null;
+  return getTeam(parseInt(sel.value, 10));
+}
+
+function updateOverrideSliderBounds() {
+  const slider = document.getElementById('td-override-price-slider');
+  const numEl  = document.getElementById('td-override-price-num');
+  if (!slider || !numEl) return;
+  const team = selectedOverrideTeam();
+  const max  = team ? Math.max(team.budget, MAX_BID, parseInt(numEl.value, 10) || 0) : MAX_BID;
+  slider.max = max;
+}
+
+function updateOverrideBiryaniWarning(player) {
+  const warnEl = document.getElementById('td-override-warning');
+  if (!warnEl) return;
+  const team = selectedOverrideTeam();
+  if (team && player.tier === 'Biryani' && team.biriyaniCount >= 1) {
+    warnEl.textContent = '⚠ ' + team.name + ' already has a Biryani player — awarding breaks the 1-per-team cap.';
+    warnEl.style.display = '';
+  } else {
+    warnEl.style.display = 'none';
+  }
+}
+
+function submitTdOverrideAward() {
+  if (!IS_TD) return;
+  if (!state.auction.active) { toast('No player on the block.', 'danger'); return; }
+
+  const team  = selectedOverrideTeam();
+  const numEl = document.getElementById('td-override-price-num');
+  const price = parseInt(numEl && numEl.value, 10);
+
+  if (!team)              { toast('Pick a team first.', 'danger'); return; }
+  if (isNaN(price) || price < 0) { toast('Enter a valid price.', 'danger'); return; }
+  if (teamAuctionSlotsLeft(team) <= 0) { toast(team.name + ' has a full roster.', 'danger'); return; }
+  if (price > team.budget) { toast('Exceeds ' + team.name + '\u2019s remaining budget (' + fmt(team.budget) + ').', 'danger'); return; }
+
+  const player = getPlayer(state.auction.playerId);
+  let warn = '';
+  if (player.tier === 'Biryani' && team.biriyaniCount >= 1) {
+    warn = team.name + ' already has a Biryani player \u2014 this breaks the 1-per-team cap. ';
+  }
+
+  openModal(
+    'Confirm Override',
+    warn + 'Award ' + player.name + ' to ' + team.name + ' for ' + fmt(price) + '?',
+    function() {
+      clearInterval(timerInterval);
+      state.auction.leadingTeamId = team.id;
+      state.auction.currentBid    = price;
+      _tdOverridePlayerId = null; // next nomination gets a fresh default
+      finalizeAuction();
+    }
+  );
 }
 
 function renderHistory() {
@@ -3598,6 +3711,9 @@ function showRules() {
         '</li>',
         '<li><strong>Mark Unsold:</strong> The nominating captain can declare a player unsold (if no bids yet). The player is queued for Fire Sale at a reduced price.',
         '</li>',
+        '<li class="teal"><strong>TD Manual Override:</strong> When logged in as Tournament Director, a player on the block can be assigned directly to any team at any price, skipping live bidding entirely \u2014 for when time is short and the auction needs to move fast.',
+          '<span class="ex">Still checked: the team must have an open roster slot and enough remaining budget. NOT checked: the Biryani cap \u2014 a warning shows, but the TD can override it.</span>',
+        '</li>',
       '</ul>',
     '</div>',
 
@@ -3860,6 +3976,22 @@ function attachEventListeners() {
       reseedRosterFromUI
     );
   });
+
+  // TD manual override controls
+  var ovTeam   = document.getElementById('td-override-team');
+  var ovNum    = document.getElementById('td-override-price-num');
+  var ovSlider = document.getElementById('td-override-price-slider');
+  var ovAward  = document.getElementById('td-override-award-btn');
+  if (ovTeam) ovTeam.addEventListener('change', function() {
+    updateOverrideSliderBounds();
+    if (state.auction.active) updateOverrideBiryaniWarning(getPlayer(state.auction.playerId));
+  });
+  if (ovSlider) ovSlider.addEventListener('input', function() { ovNum.value = ovSlider.value; });
+  if (ovNum) ovNum.addEventListener('input', function() {
+    updateOverrideSliderBounds();
+    ovSlider.value = ovNum.value || 0;
+  });
+  if (ovAward) ovAward.addEventListener('click', submitTdOverrideAward);
   document.getElementById('btn-poster').addEventListener('click', openPoster);
   document.getElementById('btn-export').addEventListener('click', exportCSV);
 
