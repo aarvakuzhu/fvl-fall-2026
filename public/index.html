@@ -1272,24 +1272,14 @@ function TIMER_SECS() { try { return (state && state.mockDraft) ? (typeof state.
 // tier \u2014 so once Gatorade runs low, the reserve floor correctly rises to
 // reflect that the next-cheapest option is now Biscuit ($325), not another
 // $275 Gatorade that may no longer exist.
-function dynamicReserve(slotsAfter, excludePlayerId) {
+// Static reserve floor per remaining roster slot \u2014 NOT recalculated from
+// live pool state. Fixed at draft design time: 1 remaining = 1 Gatorade
+// ($275); 2 = 1 Gatorade + 1 Biscuit ($600); 3 = 1 Chai + 1 Biscuit + 1
+// Gatorade ($1,075); 4 = 1 Chai + 2 Biscuit + 1 Gatorade ($1,400).
+const RESERVE_TABLE = { 0: 0, 1: 275, 2: 600, 3: 1075, 4: 1400 };
+function RESERVE_MIN(slotsAfter) {
   if (slotsAfter <= 0) return 0;
-  var pool = [];
-  for (var i = 0; i < state.players.length; i++) {
-    var p = state.players[i];
-    if (p.isCaptain || p.drafted || p.id === excludePlayerId) continue;
-    pool.push(p.currentBase);
-  }
-  pool.sort(function(a, b){ return a - b; });
-  var take = pool.slice(0, slotsAfter);
-  var sum = 0;
-  for (var j = 0; j < take.length; j++) sum += take[j];
-  // Safety net only \u2014 shouldn't trigger since total player supply always
-  // matches total roster demand (16 teams x 5 picks = 80 players).
-  if (take.length < slotsAfter) {
-    sum += (slotsAfter - take.length) * TIERS['Gatorade'].base;
-  }
-  return sum;
+  return RESERVE_TABLE[Math.min(slotsAfter, 4)] || 1400;
 }
 
 // Base prices are a game-design constant (stay fixed across seasons unless
@@ -1712,8 +1702,7 @@ function teamAuctionSlotsLeft(team) {
 }
 
 function isBudgetLow(team) {
-  var excludeId = state.auction.active ? state.auction.playerId : null;
-  const needed = dynamicReserve(teamAuctionSlotsLeft(team), excludeId);
+  const needed = RESERVE_MIN(teamAuctionSlotsLeft(team));
   return team.budget - needed < 300;
 }
 
@@ -1734,7 +1723,7 @@ function minBidForTeam(teamId) {
   if (next > maxBidForTier(player.tier)) return null;
 
   const spotsAfter = teamAuctionSlotsLeft(team) - 1;
-  const reserve    = dynamicReserve(spotsAfter, player.id);
+  const reserve    = RESERVE_MIN(spotsAfter);
   if (next + reserve > team.budget) return null;
 
   return next;
@@ -2513,7 +2502,7 @@ function nominatePlayer(playerId, isManual = false) {
     if (teamAuctionSlotsLeft(t) <= 0) return false;
     if (isPremiumTier(player.tier) && t.premiumCount >= 1) return false;
     const spotsAfter = teamAuctionSlotsLeft(t) - 1;
-    const reserve    = dynamicReserve(spotsAfter, player.id);
+    const reserve    = RESERVE_MIN(spotsAfter);
     return player.currentBase + reserve <= t.budget;
   });
 
@@ -2570,7 +2559,7 @@ function renderTiebreakerPanel() {
     if (teamAuctionSlotsLeft(t) <= 0) return false;
     if (isPremiumTier(player.tier) && t.premiumCount >= 1) return false;
     var spotsAfter = teamAuctionSlotsLeft(t) - 1;
-    var reserve    = dynamicReserve(spotsAfter, player.id);
+    var reserve    = RESERVE_MIN(spotsAfter);
     return maxBidForTier(player.tier) + reserve <= t.budget;
   });
 
@@ -3783,11 +3772,11 @@ function showRules() {
         '<li class="gold"><strong>Starting budget: $4,200 per team.</strong> This is your total spending power &mdash; your captain\'s cost is deducted from it up front, and the rest covers all 5 draft rounds.',
           '<span class="ex">Example: A Biryani-tier captain costs $1,000 (see Rosters &amp; Captains below), leaving $3,200. Spend $650 on a Samosa and $475 on a Chai &mdash; $2,075 left for 3 more picks.</span>',
         '</li>',
-        '<li class="warn"><strong>Reserve requirement:</strong> You cannot bid if doing so would leave you unable to afford your remaining open roster slots \u2014 based on the actual cheapest players still undrafted, not a flat assumption.',
-          '<span class="ex">With 2 slots left, the reserve is the price of the 2 cheapest undrafted players in the whole pool right now. Early on that might be 2 Gatorade ($550) \u2014 but Gatorade is scarce (only ' + T['Gatorade'].count + ' exist total), so once those run out, the reserve rises to reflect the next-cheapest tier still available, e.g. 1 Gatorade + 1 Biscuit.</span>',
+        '<li class="warn"><strong>Reserve requirement:</strong> You cannot bid if doing so would leave you unable to afford your remaining open roster slots at minimum base prices.',
+          '<span class="ex">With 3 slots left and $1,100 budget: reserve needed = $1,075 (1 Chai + 1 Biscuit + 1 Gatorade). Max bid = $1,100 \u2212 $1,075 = $25.</span>',
         '</li>',
         '<li class="warn"><strong>Over-budget protection:</strong> The system automatically disables your bid button when any bid would breach your reserve floor. You will see "Over budget" on your team\'s bid control.',
-          '<span class="ex">The reserve recalculates live as players get drafted \u2014 the same 2-slots-remaining situation can require a bigger reserve later in the draft than it would have early on, once the cheapest tiers are picked over.</span>',
+          '<span class="ex">Example: Budget = $1,200, 2 slots remaining, reserve = $600. Max bid you can place = $1,200 \u2212 $600 = $600. A $625 bid would be blocked.</span>',
         '</li>',
         '<li class="teal"><strong>Budget warning:</strong> Your sidebar shows a red warning when your remaining budget is running low relative to your open slots.',
         '</li>',
@@ -3796,15 +3785,30 @@ function showRules() {
       '</ul>',
     '</div>',
 
-    // ── Reserve Rule ─────────────────────────────────────────
+    // ── Reserve Table ─────────────────────────────────────────
     '<div class="rules-section">',
-      '<div class="rules-section-title">Reserve Floor \u2014 How It\'s Calculated</div>',
-      '<p style="font-family:var(--fu);font-size:0.75rem;color:var(--muted);margin-bottom:10px;line-height:1.7;">',
-        'The minimum you must keep held back isn\'t a fixed table \u2014 it\'s the sum of the <strong style="color:var(--text);">N actual cheapest undrafted players</strong> in the whole pool right now, where N is your remaining open slots. This is recalculated on every bid, for every team, as players come off the board.',
-      '</p>',
-      '<p style="font-family:var(--fu);font-size:0.75rem;color:var(--muted);line-height:1.7;">',
-        'Why not just assume the cheapest tier (Gatorade, $' + T['Gatorade'].base + ')? Because only <strong style="color:var(--text);">' + T['Gatorade'].count + '</strong> Gatorade players exist in the entire league. Once those are drafted, the true cheapest remaining option is Biscuit ($' + T['Biscuit'].base + ') or higher \u2014 so a reserve that assumed unlimited Gatorade supply would understate what a team really needs held back for its final picks. Calculating from the actual live pool avoids that.',
-      '</p>',
+      '<div class="rules-section-title">Reserve Floor Table</div>',
+      '<p style="font-family:var(--fu);font-size:0.75rem;color:var(--muted);margin-bottom:12px;">The minimum budget held in reserve based on your remaining open roster slots. You cannot bid beyond this floor.</p>',
+      '<table class="rules-tier-table">',
+        '<thead><tr>',
+          '<th style="text-align:center;">Open Slots</th>',
+          '<th>Reserve Required</th>',
+          '<th>Based On</th>',
+        '</tr></thead>',
+        '<tbody>' + [
+          {slots:4, reserve:1400, note:'1 Chai + 2 Biscuit + 1 Gatorade'},
+          {slots:3, reserve:1075, note:'1 Chai + 1 Biscuit + 1 Gatorade'},
+          {slots:2, reserve:600,  note:'1 Biscuit + 1 Gatorade'},
+          {slots:1, reserve:275,  note:'1 Gatorade (last pick)'},
+          {slots:0, reserve:0,    note:'No picks remaining'},
+        ].map(function(r) {
+          return '<tr>' +
+            '<td style="color:#fff;font-weight:700;text-align:center;">'+r.slots+'</td>' +
+            '<td style="color:var(--gold);font-weight:700;">$'+r.reserve+'</td>' +
+            '<td style="color:var(--muted);">'+r.note+'</td>' +
+          '</tr>';
+        }).join('') + '</tbody>',
+      '</table>',
     '</div>',
 
     // ── Roster & Captains ────────────────────────────────────
