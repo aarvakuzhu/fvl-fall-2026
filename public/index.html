@@ -2188,9 +2188,10 @@ function updateOverrideSliderBounds() {
   const slider = document.getElementById('td-override-price-slider');
   const numEl  = document.getElementById('td-override-price-num');
   if (!slider || !numEl) return;
-  const team = selectedOverrideTeam();
-  const max  = team ? Math.max(team.budget, MAX_BID, parseInt(numEl.value, 10) || 0) : MAX_BID;
-  slider.max = max;
+  // Fixed at MAX_BID — same $1,200 ceiling the live-bidding tiebreaker rule
+  // enforces. A team having more budget than that doesn't raise this cap.
+  slider.max = MAX_BID;
+  numEl.max  = MAX_BID;
 }
 
 function updateOverrideBiryaniWarning(player) {
@@ -2215,6 +2216,7 @@ function submitTdOverrideAward() {
 
   if (!team)              { toast('Pick a team first.', 'danger'); return; }
   if (isNaN(price) || price < 0) { toast('Enter a valid price.', 'danger'); return; }
+  if (price > MAX_BID)   { toast('Max is ' + fmt(MAX_BID) + ' \u2014 same cap as live bidding.', 'danger'); return; }
   if (teamAuctionSlotsLeft(team) <= 0) { toast(team.name + ' has a full roster.', 'danger'); return; }
   if (price > team.budget) { toast('Exceeds ' + team.name + '\u2019s remaining budget (' + fmt(team.budget) + ').', 'danger'); return; }
 
@@ -3712,7 +3714,7 @@ function showRules() {
         '<li><strong>Mark Unsold:</strong> The nominating captain can declare a player unsold (if no bids yet). The player is queued for Fire Sale at a reduced price.',
         '</li>',
         '<li class="teal"><strong>TD Manual Override:</strong> When logged in as Tournament Director, a player on the block can be assigned directly to any team at any price, skipping live bidding entirely \u2014 for when time is short and the auction needs to move fast.',
-          '<span class="ex">Still checked: the team must have an open roster slot and enough remaining budget. NOT checked: the Biryani cap \u2014 a warning shows, but the TD can override it.</span>',
+          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed $1,200 \u2014 same cap as live bidding. NOT checked: the Biryani cap \u2014 a warning shows, but the TD can override it.</span>',
         '</li>',
       '</ul>',
     '</div>',
