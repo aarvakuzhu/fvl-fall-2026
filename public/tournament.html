@@ -189,7 +189,6 @@ a.link:hover{text-decoration:underline;}
   <div id="view-menu" class="view">
     <div class="menu-grid">
       <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
-      <button class="menu-card td-only" data-view="pools"><div class="icon">🎲</div><div class="title">Pool Allocation</div><div class="sub">Randomize &amp; lock</div></button>
       <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
       <button class="menu-card" id="menu-standings-btn"><div class="icon">🏆</div><div class="title">Standings</div><div class="sub">Pool ranks &amp; bracket results</div></button>
       <button class="menu-card td-only" data-view="rosters"><div class="icon">🔒</div><div class="title">Final Rosters</div><div class="sub">Lock for Scores/Standings</div></button>
@@ -247,22 +246,6 @@ a.link:hover{text-decoration:underline;}
   </div>
 
   <!-- POOL ALLOCATION -->
-  <div id="view-pools" class="view">
-    <button class="back-btn" data-back>← Menu</button>
-    <h2 class="pagehead">Pool Allocation</h2>
-    <div class="card">
-      <p class="hint">Safe to run any time, even mid-auction — pulls current team names (captain-defaulted where not yet renamed) and only changes which team sits in which pool, and who referees. Courts and times are fixed from the format and never move. Lock once you're happy with the draw.</p>
-      <div class="btn-row">
-        <button class="btn gold" id="randomize-btn">🎲 Randomize Pool Allocation</button>
-        <button class="btn outline" id="lock-pools-btn">🔒 Lock Pool Allocation</button>
-      </div>
-    </div>
-    <div class="card" id="pools-current-card" style="display:none;">
-      <h2>Current Allocation</h2>
-      <div id="pools-current-wrap"></div>
-    </div>
-  </div>
-
   <!-- SCHEDULE -->
   <div id="view-schedule" class="view">
     <button class="back-btn" data-back>← Menu</button>
@@ -512,7 +495,6 @@ async function loadAll() {
   if (IS_TD) renderMiniStatus();
   renderScheduleFilters();
   renderScheduleTable();
-  renderPoolsCurrent();
 }
 
 function renderFormat() {
@@ -693,8 +675,6 @@ function renderMiniStatus() {
   lines.push(CFG && CFG.revealed ? '<span class="pill success">Revealed</span>' : '<span class="pill danger">Hidden</span>');
   document.getElementById('mini-status').innerHTML = lines.join(' &nbsp; ');
 
-  const lockPoolsBtn = document.getElementById('lock-pools-btn');
-  if (lockPoolsBtn) lockPoolsBtn.textContent = (SCHED && SCHED.poolsLocked) ? '🔓 Unlock Pool Allocation' : '🔒 Lock Pool Allocation';
   const revealBtn = document.getElementById('reveal-btn');
   if (revealBtn) revealBtn.textContent = (CFG && CFG.revealed) ? '🔒 Hide Again' : '👁 Reveal to Everyone';
 }
@@ -801,45 +781,7 @@ async function enterScore(matchId) {
   loadAll();
 }
 
-/* ── Pool allocation display ── */
-function renderPoolsCurrent() {
-  const card = document.getElementById('pools-current-card');
-  if (!SCHED || !SCHED.pools || !SCHED.pools.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  const byPool = {};
-  SCHED.pools.forEach(p => { (byPool[p.pool] = byPool[p.pool] || []).push(p.teamName); });
-  const poolNames = Object.keys(byPool).sort();
-  document.getElementById('pools-current-wrap').innerHTML =
-    '<div class="stat-row">' +
-    poolNames.map(p => `<div class="stat"><b>Pool ${p}</b>${byPool[p].join('<br>')}</div>`).join('') +
-    '</div>';
-}
-
 /* ── Actions ── */
-async function randomizePools() {
-  if (!confirm('Randomly draw teams into pools and reassign referees? Courts/times are fixed and untouched.')) return;
-  const res = await fetch('/api/tournament/schedule/randomize-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
-  const body = await res.json();
-  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
-  loadAll();
-}
-
-async function toggleLockPools() {
-  const schedRes = await fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN } });
-  const sched = await schedRes.json();
-  if (!sched.matches || !sched.matches.length) { toast('Randomize pools first.'); return; }
-  const nextLocked = !sched.poolsLocked;
-  if (!confirm((nextLocked ? 'Lock' : 'Unlock') + ' pool allocation?')) return;
-  const res = await fetch('/api/tournament/schedule/lock-pools', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
-    body: JSON.stringify({ locked: nextLocked }),
-  });
-  const body = await res.json();
-  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
-  loadAll();
-}
-
 async function lockRosters() {
   if (!confirm('Snapshot current teams/rosters as final? This does not affect pool allocation or the schedule, and resetting the draft later will not affect this snapshot.')) return;
   const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
@@ -870,8 +812,6 @@ function viewFlyer() {
 
 document.getElementById('gate-btn').addEventListener('click', submitGate);
 document.getElementById('gate-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitGate(); });
-document.getElementById('randomize-btn').addEventListener('click', randomizePools);
-document.getElementById('lock-pools-btn').addEventListener('click', toggleLockPools);
 document.getElementById('lock-rosters-btn').addEventListener('click', lockRosters);
 document.getElementById('reveal-btn').addEventListener('click', toggleReveal);
 document.getElementById('view-flyer-btn').addEventListener('click', viewFlyer);

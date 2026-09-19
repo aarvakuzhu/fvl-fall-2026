@@ -1195,9 +1195,24 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     </div>
 
     <div class="rules-section">
+      <div class="rules-section-title">Pool Allocation</div>
+      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;max-width:560px;">
+        Safe to run any time, even mid-auction — pulls current team names (captain-defaulted where not yet
+        renamed) and only changes which team sits in which pool, and who referees. Courts and times are
+        fixed from the tournament format and never move. Lock once you're happy with the draw.
+      </p>
+      <div id="admin-pools-status" style="font-family:var(--fu);font-size:0.85rem;color:var(--text2);margin-bottom:10px;">Loading&hellip;</div>
+      <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="admin-randomize-pools-btn" class="btn btn-gold" style="padding:9px 18px;">🎲 Randomize Pool Allocation</button>
+        <button id="admin-lock-pools-btn" class="btn btn-outline" style="padding:9px 18px;">🔒 Lock Pool Allocation</button>
+      </div>
+      <div id="admin-pools-current-wrap" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="rules-section">
       <div class="rules-section-title">Tournament Link</div>
       <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;max-width:560px;">
-        Pool allocation, schedule, flyer, editing the format, and full reveal control live on the
+        Schedule, standings, flyer, and editing the format live on the
         <strong style="color:var(--gold);">🏟 Tournament</strong> page (button in the header). This is just a shortcut for
         the one thing captains/players actually need: publishing (or unpublishing) the public link.
       </p>
@@ -4110,6 +4125,7 @@ function showAdmin() {
   document.body.style.overflow = 'hidden';
   loadAdminStats();
   renderAdminBudgetPanel();
+  loadAdminPoolsStatus();
   loadAdminTournamentLinkStatus();
 }
 
@@ -4243,6 +4259,90 @@ function _doApplyBudgetAdjustment(teamId, amount, reason) {
   renderBudgetSidebar();
   renderAdminBudgetPanel();
   toast('✓ ' + (amount > 0 ? '+' : '\u2212') + fmt(Math.abs(amount)) + ' applied to ' + team.name + '.', 'success');
+}
+
+/* ── ADMIN: Pool Allocation ── */
+
+async function loadAdminPoolsStatus() {
+  const statusEl = document.getElementById('admin-pools-status');
+  const lockBtn = document.getElementById('admin-lock-pools-btn');
+  const wrapEl = document.getElementById('admin-pools-current-wrap');
+  if (!statusEl) return;
+  statusEl.textContent = 'Loading…';
+  try {
+    const res = await fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN || '' } });
+    const sched = await res.json();
+    const hasPools = sched && sched.matches && sched.matches.length;
+    statusEl.innerHTML = hasPools
+      ? (sched.poolsLocked
+          ? '🔒 <strong style="color:var(--text);">Pools locked</strong>'
+          : '🎲 <strong style="color:var(--text);">Pools randomized</strong> (not locked)')
+        + ' — ' + sched.matches.filter(m => m.phase === 'pool').length + ' pool matches'
+      : '⚪ Pools not randomized yet';
+    lockBtn.textContent = (sched && sched.poolsLocked) ? '🔓 Unlock Pool Allocation' : '🔒 Lock Pool Allocation';
+
+    if (hasPools && sched.pools && sched.pools.length) {
+      const byPool = {};
+      sched.pools.forEach((p) => { (byPool[p.pool] = byPool[p.pool] || []).push(p.teamName); });
+      const poolNames = Object.keys(byPool).sort();
+      wrapEl.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+        poolNames.map((p) => `<div style="flex:1;min-width:110px;background:rgba(var(--fg-rgb),0.03);border-left:3px solid var(--gold);border-radius:4px;padding:8px 10px;font-family:var(--fu);font-size:0.78rem;"><b style="display:block;color:var(--gold);font-size:0.68rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Pool ${p}</b>${byPool[p].join('<br>')}</div>`).join('') +
+        '</div>';
+    } else {
+      wrapEl.innerHTML = '';
+    }
+  } catch (e) {
+    statusEl.textContent = 'Could not load pool status.';
+  }
+}
+
+async function randomizePoolsFromAdmin() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  openModal(
+    'Randomize Pool Allocation',
+    'Randomly draws current teams into pools and reassigns referees. Courts and times are fixed and untouched — only team assignments change. Safe to re-run any time before it\u2019s locked. Continue?',
+    async function() {
+      try {
+        const res = await fetch('/api/tournament/schedule/randomize-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+        const body = await res.json();
+        if (!res.ok) { toast('⚠ ' + (body.error || res.status), 'danger'); return; }
+        toast('✓ Pools randomized: ' + body.matches + ' matches.', 'success');
+        loadAdminPoolsStatus();
+      } catch (e) {
+        toast('⚠ Randomize failed — check your connection.', 'danger');
+      }
+    }
+  );
+}
+
+async function toggleLockPoolsFromAdmin() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  try {
+    const schedRes = await fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN } });
+    const sched = await schedRes.json();
+    if (!sched.matches || !sched.matches.length) { toast('Randomize pools first.', 'danger'); return; }
+    const nextLocked = !sched.poolsLocked;
+    const verb = nextLocked ? 'Lock' : 'Unlock';
+    openModal(
+      verb + ' Pool Allocation',
+      nextLocked
+        ? 'This freezes the current pool draw — Randomize will be blocked until you unlock it again. Continue?'
+        : 'This allows Randomize Pool Allocation to run again. Continue?',
+      async function() {
+        const res = await fetch('/api/tournament/schedule/lock-pools', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+          body: JSON.stringify({ locked: nextLocked }),
+        });
+        const body = await res.json();
+        if (!res.ok) { toast('⚠ ' + (body.error || res.status), 'danger'); return; }
+        toast(nextLocked ? '🔒 Pool allocation locked.' : '🔓 Pool allocation unlocked.', 'info');
+        loadAdminPoolsStatus();
+      }
+    );
+  } catch (e) {
+    toast('⚠ Could not check pool lock status.', 'danger');
+  }
 }
 
 /* ── ADMIN: Tournament Link (publish/unpublish shortcut) ── */
@@ -4447,6 +4547,8 @@ function attachEventListeners() {
     );
   });
   document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
+  document.getElementById('admin-randomize-pools-btn').addEventListener('click', randomizePoolsFromAdmin);
+  document.getElementById('admin-lock-pools-btn').addEventListener('click', toggleLockPoolsFromAdmin);
   document.getElementById('admin-toggle-reveal-btn').addEventListener('click', toggleTournamentReveal);
   document.getElementById('admin-copy-link-btn').addEventListener('click', copyTournamentLink);
 
