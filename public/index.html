@@ -1289,13 +1289,13 @@ const MIN_BID_INC   = 50;
 const TIMER_SECS_LIVE = 30;
 function TIMER_SECS() { try { return (state && state.mockDraft) ? (typeof state.mockTimerSecs === 'number' ? state.mockTimerSecs : 1) : TIMER_SECS_LIVE; } catch(e) { return TIMER_SECS_LIVE; } }
 // Static reserve floor per remaining roster slot \u2014 not recalculated live,
-// a fixed table by design. With Gatorade removed, Biscuit is now the
-// cheapest tier: 1 remaining = 1 Biscuit ($325); 2 = 1 Biscuit + 1 Chai
-// ($800); 3 = 2 Chai + 1 Biscuit ($1,275); 4 = 3 Chai + 1 Biscuit ($1,750).
-const RESERVE_TABLE = { 0: 0, 1: 325, 2: 800, 3: 1275, 4: 1750 };
+// a fixed table by design. Biscuit is the cheapest tier: 1 remaining = 1
+// Biscuit ($300); 2 = 1 Biscuit + 1 Chai ($750); 3 = 2 Chai + 1 Biscuit
+// ($1,200); 4 = 3 Chai + 1 Biscuit ($1,650).
+const RESERVE_TABLE = { 0: 0, 1: 300, 2: 750, 3: 1200, 4: 1650 };
 function RESERVE_MIN(slotsAfter) {
   if (slotsAfter <= 0) return 0;
-  return RESERVE_TABLE[Math.min(slotsAfter, 4)] || 1750;
+  return RESERVE_TABLE[Math.min(slotsAfter, 4)] || 1650;
 }
 
 // Base prices are a game-design constant (stay fixed across seasons unless
@@ -1306,8 +1306,8 @@ const TIERS = {
   'Mandi':   { count: 0, base: 1000 },
   'Biryani': { count: 0, base: 800 },
   'Samosa':  { count: 0, base: 650 },
-  'Chai':    { count: 0, base: 475 },
-  'Biscuit': { count: 0, base: 325 },
+  'Chai':    { count: 0, base: 450 },
+  'Biscuit': { count: 0, base: 300 },
 };
 
 // Max bid per tier before live bidding switches to the tiebreaker draw.
@@ -1341,7 +1341,7 @@ const CAPTAIN_PREMIUM = 0.25; // captains cost their tier's base price + this % 
 function captainCost(tier) {
   const base = (TIERS[tier] || TIERS['Biryani']).base;
   const raw  = base * (1 + CAPTAIN_PREMIUM);
-  return Math.floor(raw / 25) * 25; // rounded DOWN to the nearest $25 — same increment every bid uses
+  return Math.floor(raw / 50) * 50; // rounded DOWN to the nearest $50 — same increment every bid uses, and keeps every captain cost reachable on the live-bidding ladder too
 }
 
 // Mandi and Biryani share one combined "premium tier" cap per team — a
@@ -2774,11 +2774,10 @@ function placeBid(teamId) {
 
   // Enter tiebreaker once the NEXT possible increment would exceed this
   // tier's max bid \u2014 not just when the current bid happens to land
-  // exactly on the cap. Some tier base prices don't divide evenly into
-  // MIN_BID_INC steps up to the cap (e.g. Chai $475 base with a $50
-  // increment plateaus at $1,975, never exactly $2,000), so checking
-  // "would the next step exceed the cap" is the only way that's correct
-  // for every tier regardless of that parity.
+  // exactly on the cap. Every tier's base price is now a multiple of
+  // MIN_BID_INC ($50), so in practice every tier reaches the cap exactly
+  // \u2014 this check just stays correct as a safety net if that parity is
+  // ever broken again (e.g. a future tier with an odd base price).
   if (nextBid + MIN_BID_INC > maxBidForTier(getPlayer(state.auction.playerId).tier)) {
     clearInterval(timerInterval);
     state.auction.tiebreaker  = true;
@@ -3784,7 +3783,7 @@ function showRules() {
       '<div class="rules-section-title">Bidding Rules</div>',
       '<ul class="rules-list">',
         '<li><strong>Opening bid:</strong> Any eligible team places the first bid at the player\'s base price.',
-          '<span class="ex">Example: Chai player has a $475 base &mdash; first bid is $475.</span>',
+          '<span class="ex">Example: Chai player has a $450 base &mdash; first bid is $450.</span>',
         '</li>',
         '<li><strong>Raise bid:</strong> Must raise by exactly <strong>$50</strong> over the current highest bid.',
           '<span class="ex">Current bid $500 \u2192 next bid must be $525. You cannot bid $510 or $530.</span>',
@@ -3808,13 +3807,13 @@ function showRules() {
       '<div class="rules-section-title">Budget Rules &amp; Limits</div>',
       '<ul class="rules-list">',
         '<li class="gold"><strong>Starting budget: $4,500 per team.</strong> This is your total spending power &mdash; your captain\'s cost is deducted from it up front, and the rest covers all 5 draft rounds.',
-          '<span class="ex">Example: A Biryani-tier captain costs $1,000 (see Rosters &amp; Captains below), leaving $3,500. Spend $650 on a Samosa and $475 on a Chai &mdash; $2,375 left for 3 more picks.</span>',
+          '<span class="ex">Example: A Biryani-tier captain costs $1,000 (see Rosters &amp; Captains below), leaving $3,500. Spend $650 on a Samosa and $450 on a Chai &mdash; $2,400 left for 3 more picks.</span>',
         '</li>',
         '<li class="warn"><strong>Reserve requirement:</strong> You cannot bid if doing so would leave you unable to afford your remaining open roster slots at minimum base prices.',
-          '<span class="ex">With 3 slots left and $1,300 budget: reserve needed = $1,275 (2 Chai + 1 Biscuit). Only $25 of headroom \u2014 since the minimum raise is $50, this team cannot bid at all right now.</span>',
+          '<span class="ex">With 3 slots left and $1,225 budget: reserve needed = $1,200 (2 Chai + 1 Biscuit). Only $25 of headroom \u2014 since the minimum raise is $50, this team cannot bid at all right now.</span>',
         '</li>',
         '<li class="warn"><strong>Over-budget protection:</strong> The system automatically disables your bid button when any bid would breach your reserve floor. You will see "Over budget" on your team\'s bid control.',
-          '<span class="ex">Example: Budget = $1,300, 2 slots remaining, reserve = $800 (1 Chai + 1 Biscuit). Max bid you can place = $1,300 \u2212 $800 = $500. A $550 bid (the next $50 step) would be blocked.</span>',
+          '<span class="ex">Example: Budget = $1,300, 2 slots remaining, reserve = $750 (1 Chai + 1 Biscuit). Max bid you can place = $1,300 \u2212 $750 = $550. A $600 bid (the next $50 step) would be blocked.</span>',
         '</li>',
         '<li class="teal"><strong>Budget warning:</strong> Your sidebar shows a red warning when your remaining budget is running low relative to your open slots.',
         '</li>',
@@ -3836,10 +3835,10 @@ function showRules() {
           '<th>Based On</th>',
         '</tr></thead>',
         '<tbody>' + [
-          {slots:4, reserve:1750, note:'3 Chai + 1 Biscuit'},
-          {slots:3, reserve:1275, note:'2 Chai + 1 Biscuit'},
-          {slots:2, reserve:800,  note:'1 Chai + 1 Biscuit'},
-          {slots:1, reserve:325,  note:'1 Biscuit (last pick)'},
+          {slots:4, reserve:1650, note:'3 Chai + 1 Biscuit'},
+          {slots:3, reserve:1200, note:'2 Chai + 1 Biscuit'},
+          {slots:2, reserve:750,  note:'1 Chai + 1 Biscuit'},
+          {slots:1, reserve:300,  note:'1 Biscuit (last pick)'},
           {slots:0, reserve:0,    note:'No picks remaining'},
         ].map(function(r) {
           return '<tr>' +
@@ -3856,7 +3855,7 @@ function showRules() {
       '<div class="rules-section-title">Rosters &amp; Captains</div>',
       '<ul class="rules-list">',
         '<li><strong>' + TEAM_COUNT + ' teams</strong> each captained by a pre-selected player. A captain\'s cost is <strong>their tier\'s base price + a 25% premium</strong>, deducted from their own team\'s $4,500 budget before the auction begins.',
-          '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($475 base) costs $475 + 25% = $593.75, rounded <strong>down</strong> to the nearest $25 \u2014 <strong>$575</strong>. A Mandi-tier captain ($1,000 base) costs $1,000 + 25% = <strong style="color:#ff2e6b;">$1,250</strong>.</span>',
+          '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($450 base) costs $450 + 25% = $562.50, rounded <strong>down</strong> to the nearest $50 \u2014 <strong>$550</strong>. A Mandi-tier captain ($1,000 base) costs $1,000 + 25% = <strong style="color:#ff2e6b;">$1,250</strong>.</span>',
         '</li>',
         '<li><strong>Each team drafts 5 players</strong> (1 captain + 5 = 6 total on your roster).',
         '</li>',
