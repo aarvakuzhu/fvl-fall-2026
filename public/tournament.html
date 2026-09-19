@@ -172,6 +172,17 @@ a.link:hover{text-decoration:underline;}
       <button class="btn outline" id="public-standings-btn">🏆 View Standings</button>
       <button class="btn outline" id="public-flyer-btn">📋 View Flyer</button>
     </div>
+    <p style="text-align:center;margin-top:20px;">
+      <a href="#" class="link" id="td-login-link" style="font-size:0.78rem;">🔐 Tournament Director? Log in here</a>
+    </p>
+    <div class="card" id="td-login-inline" style="display:none;max-width:320px;margin-left:auto;margin-right:auto;text-align:center;">
+      <input id="td-login-pw" type="password" placeholder="TD password" autocomplete="off"
+             style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--fu);font-size:0.95rem;text-align:center;">
+      <div class="btn-row" style="justify-content:center;margin-top:10px;">
+        <button class="btn gold" id="td-login-submit-btn">Enter</button>
+      </div>
+      <div class="err" id="td-login-err" style="display:none;color:var(--danger);font-family:var(--fu);font-size:0.78rem;margin-top:8px;">Incorrect password.</div>
+    </div>
   </div>
 
   <!-- LANDING MENU (TD only) -->
@@ -403,6 +414,40 @@ async function submitGate() {
     errEl.style.display = 'block';
   }
 }
+
+// Same idea as submitGate(), but reachable from the PUBLIC landing \u2014
+// needed because once revealed, boot() skips the full gate entirely (public
+// access already works), so without this there'd be no way for a TD to log
+// in from this page if their session token ever expired or they arrived
+// via a plain link instead of the header button.
+document.getElementById('td-login-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('td-login-inline').style.display = '';
+  document.getElementById('td-login-pw').focus();
+});
+async function submitInlineTdLogin() {
+  const pw = document.getElementById('td-login-pw').value;
+  const errEl = document.getElementById('td-login-err');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/td/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!res.ok) { errEl.style.display = 'block'; return; }
+    const body = await res.json();
+    TD_TOKEN = body.token;
+    IS_TD = true;
+    try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
+    enterApp(); // re-runs the td-only toggle and switches to the full menu
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server.';
+    errEl.style.display = 'block';
+  }
+}
+document.getElementById('td-login-submit-btn').addEventListener('click', submitInlineTdLogin);
+document.getElementById('td-login-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitInlineTdLogin(); });
 
 function fmtTime12(hhmm) {
   if (!hhmm) return '';
