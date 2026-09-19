@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FVL — Tournament (TD)</title>
+<script>
+// Runs before first paint so a saved theme choice applies immediately, no
+// flash of the wrong theme. Same key/values as the main draft app.
+(function(){
+  try {
+    var saved = localStorage.getItem('fvl_theme');
+    if (saved === 'light' || saved === 'dark') {
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+  } catch(e) {}
+})();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
 :root{
@@ -14,6 +26,40 @@
   --cyan:#38d9f5;--danger:#f03050;--success:#22d68a;
   --fd:'Bebas Neue',sans-serif;--fu:'Rajdhani',sans-serif;--fb:'DM Sans',sans-serif;
   --r:8px;
+  color-scheme: dark;
+}
+/* Light mode: surfaces/borders/text flip to light values, AND the accent
+   colors (gold/cyan/danger/success) switch to darker, higher-contrast
+   variants \u2014 the bright dark-mode versions are used directly as TEXT on
+   the page background in several places here (headings, pill labels,
+   links), and a bright gold/cyan reads poorly on a near-white background.
+   Same darker-gold (#8a6d00) already validated for this in the app's
+   print stylesheet. */
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --ink:#f4f5f9;--surface:#ffffff;--surface2:#eef1f7;--surface3:#e3e7f0;
+    --border:rgba(10,14,30,0.10);--border2:rgba(10,14,30,0.16);
+    --text:#12141c;--text2:#4c5568;--muted:#6b7488;
+    --gold:#8a6d00;--gold2:#a5820a;
+    --cyan:#0e7490;--danger:#b91c3c;--success:#0f8f5f;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"]{
+  --ink:#f4f5f9;--surface:#ffffff;--surface2:#eef1f7;--surface3:#e3e7f0;
+  --border:rgba(10,14,30,0.10);--border2:rgba(10,14,30,0.16);
+  --text:#12141c;--text2:#4c5568;--muted:#6b7488;
+  --gold:#8a6d00;--gold2:#a5820a;
+  --cyan:#0e7490;--danger:#b91c3c;--success:#0f8f5f;
+  color-scheme: light;
+}
+:root[data-theme="dark"]{
+  --ink:#05080f;--surface:#0d1425;--surface2:#111d34;--surface3:#172240;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#eef2ff;--text2:#8fa0c0;--muted:#4a5a80;
+  --gold:#f0c040;--gold2:#ffd96a;
+  --cyan:#38d9f5;--danger:#f03050;--success:#22d68a;
+  color-scheme: dark;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--ink);color:var(--text);font-family:var(--fb);min-height:100vh;padding:24px 16px 60px;}
@@ -50,6 +96,8 @@ tr.no-results td{color:var(--muted);text-align:center;padding:20px;}
 .pill.ref{background:rgba(56,217,245,0.15);color:var(--cyan);}
 a.link{color:var(--cyan);text-decoration:none;}
 a.link:hover{text-decoration:underline;}
+#theme-toggle{position:fixed;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10;}
+#theme-toggle:hover{background:var(--surface3);transform:scale(1.06);}
 
 /* Landing menu */
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:20px;}
@@ -76,6 +124,8 @@ a.link:hover{text-decoration:underline;}
 </style>
 </head>
 <body>
+
+<button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">🌙</button>
 
 <div id="gate" class="gate">
   <div class="eyebrow">Fowler Volleyball League</div>
@@ -515,6 +565,23 @@ document.getElementById('lock-pools-btn').addEventListener('click', toggleLockPo
 document.getElementById('lock-rosters-btn').addEventListener('click', lockRosters);
 document.getElementById('reveal-btn').addEventListener('click', toggleReveal);
 document.getElementById('view-flyer-btn').addEventListener('click', viewFlyer);
+
+function initThemeToggle() {
+  const btn = document.getElementById('theme-toggle');
+  function current() {
+    return document.documentElement.getAttribute('data-theme')
+      || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  }
+  function paint() { btn.textContent = current() === 'light' ? '☀️' : '🌙'; }
+  paint();
+  btn.addEventListener('click', () => {
+    const next = current() === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('fvl_theme', next); } catch(e) {}
+    paint();
+  });
+}
+initThemeToggle();
 
 boot();
 </script>
