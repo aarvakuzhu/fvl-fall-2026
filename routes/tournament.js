@@ -6,7 +6,7 @@ const TournamentConfig = require('../models/TournamentConfig');
 const Schedule = require('../models/Schedule');
 const DraftState = require('../models/DraftState');
 const { isValidToken, OFFICIAL_DRAFT_ID } = require('../utils/tdAuth');
-const { buildPoolSkeleton, assignPoolsToSkeleton } = require('../utils/scheduleGen');
+const { buildPoolSkeleton, assignPoolsToSkeleton, assignReferees } = require('../utils/scheduleGen');
 
 const TOURNAMENT_ID = 'fvl-major-oct-2026'; // one active tournament for now
 
@@ -167,7 +167,8 @@ router.post('/schedule/randomize-pools', requireTd, async (req, res) => {
           startHHMM: cfg.timeStart || '08:40',
         });
 
-    const { pools, matches } = assignPoolsToSkeleton(skeleton, teams, cfg.poolCount);
+    const { pools, matches: withTeams } = assignPoolsToSkeleton(skeleton, teams, cfg.poolCount);
+    const matches = assignReferees(withTeams, teams);
 
     const doc = await Schedule.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },

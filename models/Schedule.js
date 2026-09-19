@@ -22,6 +22,8 @@ const MatchSchema = new mongoose.Schema(
     teamBName: { type: String, default: '' },
     seedA: { type: Number, default: null },              // pool position (1..4) this slot needs — used to re-fill on re-randomization
     seedB: { type: Number, default: null },
+    refereeTeamId: { type: Number, default: null },      // a non-playing team's id, drawn from teams free at this timeStart
+    refereeTeamName: { type: String, default: '' },
 
     scoreA: { type: Number, default: null },
     scoreB: { type: Number, default: null },

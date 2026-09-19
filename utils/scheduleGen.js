@@ -125,4 +125,49 @@ function assignPoolsToSkeleton(skeleton, teams, poolCount) {
   return { pools, matches };
 }
 
-module.exports = { buildPoolSkeleton, assignPoolsToSkeleton, toHHMM, toMinutes };
+/**
+ * Assigns a referee TEAM to each match, drawn from teams not playing in
+ * that same time slot (so they're actually free to ref). Balanced greedy:
+ * at each match, picks whichever eligible team has reffed the fewest
+ * times so far, so ref duty spreads evenly across the tournament rather
+ * than always falling on the same teams. Mutates a copy, doesn't touch
+ * court/time/team fields.
+ *
+ * @param {Array} matches - from assignPoolsToSkeleton, must have teamAId/teamBId/timeStart filled in
+ * @param {Array<{teamId:number, name:string}>} teams - all teams
+ * @returns {Array} matches with refereeTeamId/refereeTeamName added
+ */
+function assignReferees(matches, teams) {
+  const teamById = new Map(teams.map((t) => [t.teamId, t]));
+  const refCount = new Map(teams.map((t) => [t.teamId, 0]));
+
+  // Busy team ids per time slot, across ALL matches at that time (not just
+  // the pair's own match) — a team playing on court 1 can't ref court 2's
+  // match at the same time either.
+  const busyByTime = new Map();
+  matches.forEach((m) => {
+    if (!busyByTime.has(m.timeStart)) busyByTime.set(m.timeStart, new Set());
+    const s = busyByTime.get(m.timeStart);
+    s.add(m.teamAId);
+    s.add(m.teamBId);
+  });
+
+  return matches.map((m) => {
+    const busy = busyByTime.get(m.timeStart) || new Set();
+    const eligible = teams.filter((t) => !busy.has(t.teamId));
+
+    if (eligible.length === 0) {
+      return { ...m, refereeTeamId: null, refereeTeamName: '' };
+    }
+
+    let best = eligible[0];
+    eligible.forEach((t) => {
+      if (refCount.get(t.teamId) < refCount.get(best.teamId)) best = t;
+    });
+    refCount.set(best.teamId, refCount.get(best.teamId) + 1);
+
+    return { ...m, refereeTeamId: best.teamId, refereeTeamName: best.name };
+  });
+}
+
+module.exports = { buildPoolSkeleton, assignPoolsToSkeleton, assignReferees, toHHMM, toMinutes };

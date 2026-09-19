@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>FVL \u2014 Tournament (TD)</title>
+<title>FVL — Tournament (TD)</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
 :root{
@@ -17,8 +17,9 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--ink);color:var(--text);font-family:var(--fb);min-height:100vh;padding:24px 16px 60px;}
-.wrap{max-width:920px;margin:0 auto;}
+.wrap{max-width:960px;margin:0 auto;}
 h1{font-family:var(--fd);font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;color:var(--gold);}
+h2.pagehead{font-family:var(--fd);font-size:clamp(1.5rem,5vw,2rem);letter-spacing:1.5px;color:var(--gold);}
 .eyebrow{font-family:var(--fu);font-size:0.72rem;letter-spacing:4px;text-transform:uppercase;color:var(--text2);margin-bottom:4px;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:18px;}
 .card h2{font-family:var(--fu);font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:14px;}
@@ -32,11 +33,13 @@ h1{font-family:var(--fd);font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;col
 .btn.gold{background:var(--gold);color:#241a02;border-color:var(--gold);}
 .btn.danger{background:transparent;color:var(--danger);border-color:var(--danger);}
 .btn.outline{background:transparent;}
+.btn.small{padding:6px 12px;font-size:0.7rem;}
 .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
 .hint{font-family:var(--fu);font-size:0.72rem;color:var(--muted);line-height:1.6;margin-top:10px;max-width:600px;}
 table{width:100%;border-collapse:collapse;margin-top:8px;font-family:var(--fu);font-size:0.85rem;}
 th{text-align:left;padding:6px 8px;font-size:0.65rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);}
 td{padding:6px 8px;border-bottom:1px dashed var(--border);}
+tr.no-results td{color:var(--muted);text-align:center;padding:20px;}
 .gate{max-width:340px;margin:80px auto;text-align:center;}
 .gate input{width:100%;padding:12px;margin-top:16px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--fu);font-size:1rem;text-align:center;}
 .gate .err{color:var(--danger);font-family:var(--fu);font-size:0.8rem;margin-top:10px;display:none;}
@@ -44,8 +47,32 @@ td{padding:6px 8px;border-bottom:1px dashed var(--border);}
 .pill.gold{background:rgba(240,192,64,0.15);color:var(--gold);}
 .pill.danger{background:rgba(240,48,80,0.15);color:var(--danger);}
 .pill.success{background:rgba(34,214,138,0.15);color:var(--success);}
+.pill.ref{background:rgba(56,217,245,0.15);color:var(--cyan);}
 a.link{color:var(--cyan);text-decoration:none;}
 a.link:hover{text-decoration:underline;}
+
+/* Landing menu */
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:20px;}
+.menu-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .15s;text-align:left;}
+.menu-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+.menu-card .icon{font-size:1.8rem;margin-bottom:8px;}
+.menu-card .title{font-family:var(--fu);font-weight:700;font-size:0.95rem;letter-spacing:0.5px;color:var(--text);}
+.menu-card .sub{font-family:var(--fu);font-size:0.72rem;color:var(--text2);margin-top:3px;}
+
+/* Section views */
+.view{display:none;}
+.view.active{display:block;}
+.back-btn{font-family:var(--fu);font-size:0.75rem;color:var(--text2);background:none;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.back-btn:hover{color:var(--gold);}
+
+/* Schedule filters */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
+.filter-field{display:flex;flex-direction:column;gap:4px;}
+.filter-field label{font-family:var(--fu);font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--text2);}
+.filter-field input,.filter-field select{background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--fu);font-size:0.85rem;padding:7px 10px;}
+.ref-toggle{display:flex;border-radius:5px;overflow:hidden;border:1px solid var(--border2);}
+.ref-toggle button{font-family:var(--fu);font-size:0.7rem;padding:7px 12px;background:var(--surface2);color:var(--text2);border:none;cursor:pointer;}
+.ref-toggle button.active{background:var(--gold);color:#241a02;}
 </style>
 </head>
 <body>
@@ -62,58 +89,116 @@ a.link:hover{text-decoration:underline;}
 </div>
 
 <div id="app" class="wrap" style="display:none;">
-  <div class="eyebrow">Fowler Volleyball League \u2014 TD Only</div>
+  <div class="eyebrow">Fowler Volleyball League — TD Only</div>
   <h1 id="tourney-name">Tournament</h1>
+  <div class="status-line" id="mini-status" style="margin-top:10px;"></div>
 
-  <div class="card" id="format-card">
-    <h2>Format</h2>
-    <div class="stat-row" id="format-stats"></div>
-    <div id="prizes-wrap"></div>
-    <div class="btn-row">
-      <button class="btn outline" id="view-flyer-btn">\uD83D\uDCCB View Flyer</button>
+  <!-- LANDING MENU -->
+  <div id="view-menu" class="view active">
+    <div class="menu-grid">
+      <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
+      <button class="menu-card" data-view="pools"><div class="icon">🎲</div><div class="title">Pool Allocation</div><div class="sub">Randomize &amp; lock</div></button>
+      <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
+      <button class="menu-card" data-view="rosters"><div class="icon">🔒</div><div class="title">Final Rosters</div><div class="sub">Lock for Scores/Standings</div></button>
+      <button class="menu-card" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
     </div>
   </div>
 
-  <div class="card">
-    <h2>Status</h2>
-    <div class="status-line" id="status-line">Loading&hellip;</div>
-  </div>
-
-  <div class="card">
-    <h2>Pool Allocation</h2>
-    <p class="hint">Safe to run any time, even mid-auction \u2014 pulls current team names (captain-defaulted where not yet renamed) and only changes which team sits in which pool. Courts and times are fixed from the format above and never move. Lock once you're happy with the draw.</p>
-    <div class="btn-row">
-      <button class="btn gold" id="randomize-btn">\uD83C\uDFB2 Randomize Pool Allocation</button>
-      <button class="btn outline" id="lock-pools-btn">\uD83D\uDD12 Lock Pool Allocation</button>
+  <!-- FORMAT & FLYER -->
+  <div id="view-format" class="view">
+    <button class="back-btn" data-back>← Menu</button>
+    <h2 class="pagehead">Format &amp; Flyer</h2>
+    <div class="card">
+      <div class="stat-row" id="format-stats"></div>
+      <div id="prizes-wrap"></div>
+      <div class="btn-row">
+        <button class="btn outline" id="view-flyer-btn">📋 View Flyer</button>
+      </div>
     </div>
   </div>
 
-  <div class="card" id="schedule-card" style="display:none;">
-    <h2>Pool Schedule</h2>
-    <div id="schedule-table-wrap"></div>
-  </div>
-
-  <div class="card">
-    <h2>Final Rosters</h2>
-    <p class="hint">A separate, later step \u2014 once the auction is fully complete. Snapshots final rosters for Scores/Standings. Has no effect on pool allocation or the schedule.</p>
-    <div class="btn-row">
-      <button class="btn danger" id="lock-rosters-btn">\uD83D\uDD12 Lock Final Rosters</button>
+  <!-- POOL ALLOCATION -->
+  <div id="view-pools" class="view">
+    <button class="back-btn" data-back>← Menu</button>
+    <h2 class="pagehead">Pool Allocation</h2>
+    <div class="card">
+      <p class="hint">Safe to run any time, even mid-auction — pulls current team names (captain-defaulted where not yet renamed) and only changes which team sits in which pool, and who referees. Courts and times are fixed from the format and never move. Lock once you're happy with the draw.</p>
+      <div class="btn-row">
+        <button class="btn gold" id="randomize-btn">🎲 Randomize Pool Allocation</button>
+        <button class="btn outline" id="lock-pools-btn">🔒 Lock Pool Allocation</button>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>Reveal</h2>
-    <p class="hint">Everything on this page \u2014 flyer, format, schedule \u2014 is TD-only until you reveal it. Flip this when you're ready for captains/players to see it.</p>
-    <div class="btn-row">
-      <button class="btn outline" id="reveal-btn">\uD83D\uDC41 Reveal to Everyone</button>
+  <!-- SCHEDULE -->
+  <div id="view-schedule" class="view">
+    <button class="back-btn" data-back>← Menu</button>
+    <h2 class="pagehead">Schedule</h2>
+    <div class="card" id="schedule-empty" style="display:none;">
+      <p class="hint">No schedule yet — randomize pool allocation first.</p>
+    </div>
+    <div class="card" id="schedule-card">
+      <div class="filters">
+        <div class="filter-field" style="flex:1;min-width:160px;">
+          <label>Search team</label>
+          <input id="sched-search" type="text" placeholder="Team name…">
+        </div>
+        <div class="filter-field">
+          <label>Court</label>
+          <select id="sched-court"><option value="">All courts</option></select>
+        </div>
+        <div class="filter-field">
+          <label>Pool</label>
+          <select id="sched-pool"><option value="">All pools</option></select>
+        </div>
+        <div class="filter-field" style="flex:1;min-width:160px;">
+          <label>Referee team</label>
+          <select id="sched-ref-team"><option value="">Any</option></select>
+        </div>
+        <div class="filter-field">
+          <label>Referee filter</label>
+          <div class="ref-toggle">
+            <button id="ref-mode-any" class="active" data-mode="any">Any</button>
+            <button id="ref-mode-only" data-mode="only">Only</button>
+            <button id="ref-mode-exclude" data-mode="exclude">Exclude</button>
+          </div>
+        </div>
+      </div>
+      <div id="schedule-table-wrap"></div>
     </div>
   </div>
+
+  <!-- FINAL ROSTERS -->
+  <div id="view-rosters" class="view">
+    <button class="back-btn" data-back>← Menu</button>
+    <h2 class="pagehead">Final Rosters</h2>
+    <div class="card">
+      <p class="hint">A separate, later step — once the auction is fully complete. Snapshots final rosters for Scores/Standings. Has no effect on pool allocation or the schedule.</p>
+      <div class="btn-row">
+        <button class="btn danger" id="lock-rosters-btn">🔒 Lock Final Rosters</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVEAL -->
+  <div id="view-reveal" class="view">
+    <button class="back-btn" data-back>← Menu</button>
+    <h2 class="pagehead">Reveal</h2>
+    <div class="card">
+      <p class="hint">Everything on this page — flyer, format, schedule — is TD-only until you reveal it. Flip this when you're ready for captains/players to see it.</p>
+      <div class="btn-row">
+        <button class="btn outline" id="reveal-btn">👁 Reveal to Everyone</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
 let TD_TOKEN = null;
+let CFG = null, LOCKED = null, SCHED = null;
 
-function toast(msg) { alert(msg); } // simple page, no toast system of its own
+function toast(msg) { alert(msg); }
 
 async function checkToken(token) {
   if (!token) return false;
@@ -172,6 +257,19 @@ function fmtTime12(hhmm) {
   return h12 + ':' + String(m).padStart(2, '0') + ' ' + period;
 }
 
+/* ── Navigation ── */
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+}
+document.querySelectorAll('.menu-card').forEach(btn => {
+  btn.addEventListener('click', () => showView(btn.dataset.view));
+});
+document.querySelectorAll('[data-back]').forEach(btn => {
+  btn.addEventListener('click', () => showView('menu'));
+});
+
+/* ── Data loading ── */
 async function loadAll() {
   const headers = { 'x-td-token': TD_TOKEN };
   const [cfgRes, lockedRes, schedRes] = await Promise.all([
@@ -179,31 +277,28 @@ async function loadAll() {
     fetch('/api/tournament/locked', { headers }),
     fetch('/api/tournament/schedule', { headers }),
   ]);
-  const cfg    = await cfgRes.json();
-  const locked = await lockedRes.json();
-  const sched  = await schedRes.json();
+  CFG    = await cfgRes.json();
+  LOCKED = await lockedRes.json();
+  SCHED  = await schedRes.json();
 
-  renderFormat(cfg);
-  renderStatus(cfg, locked, sched);
-  renderSchedule(sched);
+  renderFormat();
+  renderMiniStatus();
+  renderScheduleFilters();
+  renderScheduleTable();
 }
 
-function renderFormat(cfg) {
-  if (!cfg) return;
-  document.getElementById('tourney-name').textContent = cfg.name || 'Tournament';
+function renderFormat() {
+  if (!CFG) return;
+  document.getElementById('tourney-name').textContent = CFG.name || 'Tournament';
   const stats = [
-    ['Date', cfg.date],
-    ['Venue', cfg.venue],
-    ['Courts', cfg.courts],
-    ['Teams', cfg.teamCount],
-    ['Pools', cfg.poolCount + ' \u00d7 ' + cfg.poolSize],
-    ['Tiers', (cfg.tiers || []).map(t => t.name).join(' / ')],
+    ['Date', CFG.date], ['Venue', CFG.venue], ['Courts', CFG.courts],
+    ['Teams', CFG.teamCount], ['Pools', CFG.poolCount + ' × ' + CFG.poolSize],
+    ['Tiers', (CFG.tiers || []).map(t => t.name).join(' / ')],
   ];
   document.getElementById('format-stats').innerHTML = stats.map(([label, val]) =>
-    `<div class="stat"><b>${label}</b>${val || '\u2014'}</div>`
-  ).join('');
+    `<div class="stat"><b>${label}</b>${val || '—'}</div>`).join('');
 
-  const prizes = cfg.prizes || [];
+  const prizes = CFG.prizes || [];
   if (prizes.length) {
     document.getElementById('prizes-wrap').innerHTML =
       '<table><thead><tr><th>Award</th><th>Tier</th><th>Type</th></tr></thead><tbody>' +
@@ -212,39 +307,91 @@ function renderFormat(cfg) {
   }
 }
 
-function renderStatus(cfg, locked, sched) {
+function renderMiniStatus() {
   const lines = [];
-  lines.push(sched.matches && sched.matches.length
-    ? (sched.poolsLocked ? '<span class="pill gold">Pools Locked</span>' : '<span class="pill">Pools Randomized</span>') + ' \u2014 ' + sched.matches.length + ' matches'
+  lines.push(SCHED.matches && SCHED.matches.length
+    ? (SCHED.poolsLocked ? '<span class="pill gold">Pools Locked</span>' : '<span class="pill">Pools Randomized</span>')
     : '<span class="pill danger">Pools Not Randomized</span>');
-  lines.push(locked && locked.locked
-    ? '<span class="pill success">Rosters Locked</span> \u2014 ' + locked.teams.length + ' teams, ' + new Date(locked.lockedAt).toLocaleString()
-    : '<span class="pill danger">Rosters Not Locked</span>');
-  lines.push(cfg && cfg.revealed
-    ? '<span class="pill success">Revealed</span> \u2014 visible to everyone'
-    : '<span class="pill danger">Hidden</span> \u2014 TD only');
-  document.getElementById('status-line').innerHTML = lines.join('<br>');
+  lines.push(LOCKED && LOCKED.locked ? '<span class="pill success">Rosters Locked</span>' : '<span class="pill danger">Rosters Not Locked</span>');
+  lines.push(CFG && CFG.revealed ? '<span class="pill success">Revealed</span>' : '<span class="pill danger">Hidden</span>');
+  document.getElementById('mini-status').innerHTML = lines.join(' &nbsp; ');
 
   const lockPoolsBtn = document.getElementById('lock-pools-btn');
-  lockPoolsBtn.textContent = (sched && sched.poolsLocked) ? '\uD83D\uDD13 Unlock Pool Allocation' : '\uD83D\uDD12 Lock Pool Allocation';
-
+  if (lockPoolsBtn) lockPoolsBtn.textContent = (SCHED && SCHED.poolsLocked) ? '🔓 Unlock Pool Allocation' : '🔒 Lock Pool Allocation';
   const revealBtn = document.getElementById('reveal-btn');
-  revealBtn.textContent = (cfg && cfg.revealed) ? '\uD83D\uDD12 Hide Again' : '\uD83D\uDC41 Reveal to Everyone';
+  if (revealBtn) revealBtn.textContent = (CFG && CFG.revealed) ? '🔒 Hide Again' : '👁 Reveal to Everyone';
 }
 
-function renderSchedule(sched) {
-  const card = document.getElementById('schedule-card');
-  if (!sched.matches || !sched.matches.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  const rows = sched.matches.map(m =>
-    `<tr><td>${fmtTime12(m.timeStart)}</td><td>Court ${m.court}</td><td>${m.label}</td><td>${m.teamAName} vs ${m.teamBName}</td></tr>`
-  ).join('');
-  document.getElementById('schedule-table-wrap').innerHTML =
-    '<table><thead><tr><th>Time</th><th>Court</th><th>Match</th><th>Teams</th></tr></thead><tbody>' + rows + '</tbody></table>';
+/* ── Schedule: filters + search ── */
+function renderScheduleFilters() {
+  const hasSchedule = SCHED.matches && SCHED.matches.length;
+  document.getElementById('schedule-empty').style.display = hasSchedule ? 'none' : '';
+  document.getElementById('schedule-card').style.display = hasSchedule ? '' : 'none';
+  if (!hasSchedule) return;
+
+  const courts = [...new Set(SCHED.matches.map(m => m.court))].sort((a,b) => a-b);
+  const courtSel = document.getElementById('sched-court');
+  courtSel.innerHTML = '<option value="">All courts</option>' + courts.map(c => `<option value="${c}">Court ${c}</option>`).join('');
+
+  const pools = [...new Set(SCHED.matches.map(m => m.group))].sort();
+  const poolSel = document.getElementById('sched-pool');
+  poolSel.innerHTML = '<option value="">All pools</option>' + pools.map(p => `<option value="${p}">Pool ${p}</option>`).join('');
+
+  const teamNames = [...new Set(SCHED.matches.flatMap(m => [m.teamAName, m.teamBName]))].sort();
+  const refSel = document.getElementById('sched-ref-team');
+  refSel.innerHTML = '<option value="">Any</option>' + teamNames.map(n => `<option value="${n}">${n}</option>`).join('');
 }
 
+let refMode = 'any';
+['any','only','exclude'].forEach(mode => {
+  document.getElementById('ref-mode-' + mode).addEventListener('click', () => {
+    refMode = mode;
+    ['any','only','exclude'].forEach(m => document.getElementById('ref-mode-' + m).classList.toggle('active', m === mode));
+    renderScheduleTable();
+  });
+});
+
+function renderScheduleTable() {
+  if (!SCHED || !SCHED.matches || !SCHED.matches.length) return;
+  const search = document.getElementById('sched-search').value.trim().toLowerCase();
+  const court  = document.getElementById('sched-court').value;
+  const pool   = document.getElementById('sched-pool').value;
+  const refTeam = document.getElementById('sched-ref-team').value;
+
+  let rows = SCHED.matches.filter(m => {
+    if (search) {
+      const hay = (m.teamAName + ' ' + m.teamBName + ' ' + (m.refereeTeamName||'')).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (court && String(m.court) !== court) return false;
+    if (pool && m.group !== pool) return false;
+    if (refTeam) {
+      const isRef = m.refereeTeamName === refTeam;
+      if (refMode === 'only' && !isRef) return false;
+      if (refMode === 'exclude' && isRef) return false;
+    }
+    return true;
+  });
+
+  rows.sort((a,b) => (a.timeStart < b.timeStart ? -1 : a.timeStart > b.timeStart ? 1 : a.court - b.court));
+
+  const wrap = document.getElementById('schedule-table-wrap');
+  if (!rows.length) {
+    wrap.innerHTML = '<table><tbody><tr class="no-results"><td>No matches found for this filter.</td></tr></tbody></table>';
+    return;
+  }
+  wrap.innerHTML = '<table><thead><tr><th>Time</th><th>Court</th><th>Match</th><th>Teams</th><th>Referee</th></tr></thead><tbody>' +
+    rows.map(m => `<tr><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${m.label}</td><td>${m.teamAName} vs ${m.teamBName}</td><td><span class="pill ref">${m.refereeTeamName || '—'}</span></td></tr>`).join('') +
+    '</tbody></table>';
+}
+['sched-search','sched-court','sched-pool','sched-ref-team'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderScheduleTable);
+  document.getElementById(id).addEventListener('change', renderScheduleTable);
+});
+
+/* ── Actions ── */
 async function randomizePools() {
-  if (!confirm('Randomly draw teams into pools? Courts/times are fixed and untouched \u2014 only team assignments change.')) return;
+  if (!confirm('Randomly draw teams into pools and reassign referees? Courts/times are fixed and untouched.')) return;
   const res = await fetch('/api/tournament/schedule/randomize-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
   const body = await res.json();
   if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
