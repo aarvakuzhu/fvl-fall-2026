@@ -283,8 +283,8 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .team-roster{padding:6px 11px 8px;display:flex;flex-direction:column;gap:2px}
 .roster-slot{display:flex;align-items:center;gap:6px;padding:2px 0;border-bottom:1px solid rgba(var(--fg-rgb),0.03)}
 .roster-slot:last-child{border-bottom:none}
-.slot-tier{width:17px;height:17px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fu);font-weight:700;font-size:0.6rem;flex-shrink:0}
-.slot-name{flex:1;font-family:var(--fu);font-weight:600;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-tier{min-width:17px;height:17px;padding:0 3px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fu);font-weight:700;font-size:0.56rem;letter-spacing:0.3px;flex-shrink:0;overflow:hidden}
+.slot-name{flex:1;min-width:0;font-family:var(--fu);font-weight:600;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slot-price{color:var(--muted);font-family:var(--fu);font-size:0.72rem;white-space:nowrap}
 .roster-empty-slot{color:var(--muted);font-family:var(--fb);font-size:0.68rem;opacity:0.38;padding:2px 0;font-style:italic}
 
@@ -1877,7 +1877,7 @@ function renderTeams() {
         <div class="roster-slot">
           <span class="slot-tier tier-${pick.tier}"
             style="background:${pick.tier==='Biryani' ? 'var(--gold)' : pick.tier==='Samosa' ? 'var(--tier-a)' : pick.tier==='Chai' ? 'var(--tier-b)' : pick.tier==='Biscuit' ? 'var(--tier-c)' : 'var(--tier-d)'}; color:${pick.tier==='Chai'||pick.tier==='Biscuit'?'#001a0d':pick.tier==='Biryani'?'#0a0800':'#fff'};"
-          >${isCap ? '\u2605' : tierLabel(pick.tier)}</span>
+          >${isCap ? '\u2605' : tierAbbrev(pick.tier)}</span>
           <span class="slot-name">${pick.playerName}${isCap ? ' <em style="color:var(--muted);font-style:normal;font-size:0.72rem;">(C)</em>' : ''}</span>
           <span class="slot-price">${isCap ? 'Captain' : fmt(pick.price)}</span>
         </div>`);
