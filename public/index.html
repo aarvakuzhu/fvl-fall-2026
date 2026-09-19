@@ -1196,18 +1196,29 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     <div class="rules-section">
       <div class="rules-section-title">Tournament \u2014 Lock, Schedule &amp; Reveal</div>
       <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;max-width:560px;">
-        Once the draft is done: lock the teams (a permanent snapshot, safe from any later draft reset),
-        generate the pool-play schedule from that snapshot, then reveal when ready \u2014 nothing here is
-        visible to anyone but the TD until you flip Reveal.
+        Randomize teams into pools any time \u2014 even mid-auction, since team names/captains exist from the start.
+        Lock the pool draw once it's final. Separately, once the auction fully wraps, lock the final rosters
+        (for Scores/Standings later). Nothing here is visible to anyone but the TD until you flip Reveal.
       </p>
 
       <div id="admin-tournament-status" style="font-family:var(--fu);font-size:0.8rem;color:var(--text2);line-height:2;margin-bottom:14px;">Loading&hellip;</div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button id="admin-lock-teams-btn" class="btn btn-danger" style="padding:9px 18px;">\uD83D\uDD12 Lock Teams</button>
-        <button id="admin-gen-schedule-btn" class="btn btn-gold" style="padding:9px 18px;">\uD83C\uDFD0 Generate Pool Schedule</button>
+        <button id="admin-randomize-pools-btn" class="btn btn-gold" style="padding:9px 18px;">\uD83C\uDFB2 Randomize Pool Allocation</button>
+        <button id="admin-lock-pools-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDD12 Lock Pool Allocation</button>
         <button id="admin-view-flyer-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDCCB View Flyer</button>
         <button id="admin-reveal-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDC41 Reveal to Everyone</button>
+      </div>
+      <p style="font-family:var(--fu);font-size:0.68rem;color:var(--muted);margin-top:10px;line-height:1.5;max-width:560px;">
+        Randomize can be run any time, even mid-auction \u2014 it only touches which team is in which pool. Court/time
+        assignments are fixed from tournament config and never change. Once you're happy with the draw, lock it so
+        it can't be accidentally re-randomized.
+      </p>
+      <p style="font-family:var(--fu);font-size:0.68rem;color:var(--muted);margin-top:10px;line-height:1.5;max-width:560px;">
+        Separately, once the auction is fully complete: lock the final rosters below \u2014 needed later for Scores/Standings, has no effect on the schedule above.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+        <button id="admin-lock-teams-btn" class="btn btn-danger" style="padding:9px 18px;">\uD83D\uDD12 Lock Final Rosters</button>
       </div>
     </div>
 
@@ -4265,19 +4276,21 @@ async function loadAdminTournamentStatus() {
     const sched  = await schedRes.json();
 
     const lockedLine = locked.locked
-      ? '\uD83D\uDD12 <strong style="color:var(--text);">Locked</strong> \u2014 ' + locked.teams.length + ' teams, at ' + new Date(locked.lockedAt).toLocaleString()
-      : '\u26AA Not locked yet';
-    const schedLine = (sched.matches && sched.matches.length)
-      ? '\uD83C\uDFD0 <strong style="color:var(--text);">Schedule generated</strong> \u2014 ' + sched.matches.length + ' pool matches across ' + (cfg ? cfg.poolCount : '?') + ' pools'
-      : '\u26AA No schedule yet';
+      ? '\uD83D\uDD12 <strong style="color:var(--text);">Rosters locked</strong> \u2014 ' + locked.teams.length + ' teams, at ' + new Date(locked.lockedAt).toLocaleString()
+      : '\u26AA Rosters not locked yet';
+    const poolLine = (sched.matches && sched.matches.length)
+      ? (sched.poolsLocked ? '\uD83D\uDD12 <strong style="color:var(--text);">Pools locked</strong>' : '\uD83C\uDFB2 <strong style="color:var(--text);">Pools randomized</strong> (not locked)') + ' \u2014 ' + sched.matches.length + ' matches across ' + (cfg ? cfg.poolCount : '?') + ' pools'
+      : '\u26AA Pools not randomized yet';
     const revealLine = cfg && cfg.revealed
       ? '\uD83D\uDC41 <strong style="color:var(--success);">Revealed</strong> \u2014 visible to everyone'
       : '\uD83D\uDD12 <strong style="color:var(--danger);">Hidden</strong> \u2014 TD only';
 
-    el.innerHTML = lockedLine + '<br>' + schedLine + '<br>' + revealLine;
+    el.innerHTML = poolLine + '<br>' + lockedLine + '<br>' + revealLine;
 
     const revealBtn = document.getElementById('admin-reveal-btn');
     if (revealBtn) revealBtn.textContent = (cfg && cfg.revealed) ? '\uD83D\uDD12 Hide Again' : '\uD83D\uDC41 Reveal to Everyone';
+    const lockPoolsBtn = document.getElementById('admin-lock-pools-btn');
+    if (lockPoolsBtn) lockPoolsBtn.textContent = (sched && sched.poolsLocked) ? '\uD83D\uDD13 Unlock Pool Allocation' : '\uD83D\uDD12 Lock Pool Allocation';
   } catch (e) {
     el.textContent = 'Could not load tournament status.';
   }
@@ -4286,8 +4299,8 @@ async function loadAdminTournamentStatus() {
 async function lockTeamsFromUI() {
   if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
   openModal(
-    'Lock Teams',
-    'This snapshots the current official draft\u2019s teams as final. Schedule and Standings will only ever read this snapshot \u2014 resetting the draft later will NOT affect it. Re-locking later overwrites this snapshot. Continue?',
+    'Lock Final Rosters',
+    'This snapshots the current official draft\u2019s teams and rosters as final, for Scores/Standings to use later. Resetting the draft afterward will NOT affect this snapshot. Has no effect on pool allocation or the schedule. Re-locking later overwrites this snapshot. Continue?',
     async function() {
       try {
         const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
@@ -4302,23 +4315,53 @@ async function lockTeamsFromUI() {
   );
 }
 
-async function generateScheduleFromUI() {
+async function randomizePoolsFromUI() {
   if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
   openModal(
-    'Generate Pool Schedule',
-    'Randomly draws the locked teams into pools and builds the full pool-play match schedule. Re-running this overwrites any existing pool draw \u2014 do this once teams are final. Continue?',
+    'Randomize Pool Allocation',
+    'Randomly draws the current teams (captain-defaulted names included) into pools. Courts and times are fixed and untouched \u2014 only which team sits in which pool changes. Safe to re-run any time before it\u2019s locked. Continue?',
     async function() {
       try {
-        const res = await fetch('/api/tournament/schedule/generate-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+        const res = await fetch('/api/tournament/schedule/randomize-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
         const body = await res.json();
         if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
-        toast('\u2713 Schedule generated: ' + body.matches + ' matches.', 'success');
+        toast('\u2713 Pools randomized: ' + body.matches + ' matches.', 'success');
         loadAdminTournamentStatus();
       } catch (e) {
-        toast('\u26A0 Schedule generation failed \u2014 check your connection.', 'danger');
+        toast('\u26A0 Randomize failed \u2014 check your connection.', 'danger');
       }
     }
   );
+}
+
+async function togglePoolLockFromUI() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  try {
+    const schedRes = await fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN } });
+    const sched = await schedRes.json();
+    if (!sched.matches || !sched.matches.length) { toast('Randomize pools first.', 'danger'); return; }
+    const nextLocked = !sched.poolsLocked;
+    const verb = nextLocked ? 'Lock' : 'Unlock';
+    openModal(
+      verb + ' Pool Allocation',
+      nextLocked
+        ? 'This freezes the current pool draw \u2014 Randomize will be blocked until you unlock it again. Continue?'
+        : 'This allows Randomize Pool Allocation to run again. Continue?',
+      async function() {
+        const res = await fetch('/api/tournament/schedule/lock-pools', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+          body: JSON.stringify({ locked: nextLocked }),
+        });
+        const body = await res.json();
+        if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
+        toast(nextLocked ? '\uD83D\uDD12 Pool allocation locked.' : '\uD83D\uDD13 Pool allocation unlocked.', 'info');
+        loadAdminTournamentStatus();
+      }
+    );
+  } catch (e) {
+    toast('\u26A0 Could not check pool lock status.', 'danger');
+  }
 }
 
 function viewFlyerFromUI() {
@@ -4484,8 +4527,9 @@ function attachEventListeners() {
     );
   });
   document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
+  document.getElementById('admin-randomize-pools-btn').addEventListener('click', randomizePoolsFromUI);
+  document.getElementById('admin-lock-pools-btn').addEventListener('click', togglePoolLockFromUI);
   document.getElementById('admin-lock-teams-btn').addEventListener('click', lockTeamsFromUI);
-  document.getElementById('admin-gen-schedule-btn').addEventListener('click', generateScheduleFromUI);
   document.getElementById('admin-view-flyer-btn').addEventListener('click', viewFlyerFromUI);
   document.getElementById('admin-reveal-btn').addEventListener('click', toggleRevealFromUI);
 

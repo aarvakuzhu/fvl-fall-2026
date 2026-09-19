@@ -6,7 +6,7 @@ const TournamentConfig = require('../models/TournamentConfig');
 const Schedule = require('../models/Schedule');
 const DraftState = require('../models/DraftState');
 const { isValidToken, OFFICIAL_DRAFT_ID } = require('../utils/tdAuth');
-const { generatePoolSchedule } = require('../utils/scheduleGen');
+const { buildPoolSkeleton, assignPoolsToSkeleton } = require('../utils/scheduleGen');
 
 const TOURNAMENT_ID = 'fvl-major-oct-2026'; // one active tournament for now
 
@@ -129,28 +129,45 @@ router.get('/schedule', requireRevealedOrTd, async (req, res) => {
   }
 });
 
-// Generates pool assignments + the full pool-play match list from the
-// locked roster and the tournament config. TD can re-run this (new random
-// draw) any time before the tournament starts; it overwrites the previous
-// pool schedule.
-router.post('/schedule/generate-pools', requireTd, async (req, res) => {
+// Generates (or re-randomizes) the pool draw and fills it into the
+// schedule. Pulls team identity (id + name, captain-name-fallback already
+// handled client-side) straight from the LIVE official draft \u2014 no
+// dependency on the draft being complete, or on LockedRoster, since which
+// 16 teams/captains exist is known from the start of the auction, not the
+// end of it. Re-running this reuses the existing skeleton (or builds one
+// from config if this is the first run) and only overwrites team
+// names/ids \u2014 courts and times never change.
+router.post('/schedule/randomize-pools', requireTd, async (req, res) => {
   try {
-    const locked = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID }).lean();
-    if (!locked || !locked.teams.length) {
-      return res.status(400).json({ error: 'Lock teams before generating the schedule' });
+    const existing = await Schedule.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+    if (existing && existing.poolsLocked) {
+      return res.status(400).json({ error: 'Pool allocation is locked \u2014 unlock it first if you need to re-randomize.' });
     }
+
+    const draft = await DraftState.findOne({ draftId: OFFICIAL_DRAFT_ID }).lean();
+    if (!draft || !draft.data || !Array.isArray(draft.data.teams) || draft.data.teams.length === 0) {
+      return res.status(404).json({ error: 'No teams found in the official draft yet' });
+    }
+    const teams = draft.data.teams.map((t) => ({ teamId: t.id, name: t.name }));
+
     const cfg = await TournamentConfig.findOne({ tournamentId: TOURNAMENT_ID }).lean();
     if (!cfg) {
       return res.status(400).json({ error: 'No tournament config set yet' });
     }
 
-    const teams = locked.teams.map((t) => ({ teamId: t.teamId, name: t.name }));
-    const { pools, matches } = generatePoolSchedule(teams, {
-      poolCount: cfg.poolCount,
-      courts: cfg.courts,
-      matchMinutes: 25,
-      startHHMM: cfg.timeStart || '08:40',
-    });
+    // Reuse the stored skeleton if one exists (keeps courts/times fixed
+    // across re-randomization); otherwise build it fresh from config.
+    const skeleton = (existing && existing.matches && existing.matches.length)
+      ? existing.matches
+      : buildPoolSkeleton({
+          poolCount: cfg.poolCount,
+          poolSize: cfg.poolSize,
+          courts: cfg.courts,
+          matchMinutes: 25,
+          startHHMM: cfg.timeStart || '08:40',
+        });
+
+    const { pools, matches } = assignPoolsToSkeleton(skeleton, teams, cfg.poolCount);
 
     const doc = await Schedule.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
@@ -160,8 +177,23 @@ router.post('/schedule/generate-pools', requireTd, async (req, res) => {
 
     res.json({ ok: true, pools: doc.pools.length, matches: doc.matches.length });
   } catch (err) {
-    console.error('POST /tournament/schedule/generate-pools error:', err);
-    res.status(500).json({ error: err.message || 'Failed to generate schedule' });
+    console.error('POST /tournament/schedule/randomize-pools error:', err);
+    res.status(500).json({ error: err.message || 'Failed to randomize pools' });
+  }
+});
+
+router.patch('/schedule/lock-pools', requireTd, async (req, res) => {
+  try {
+    const locked = !!(req.body && req.body.locked);
+    const doc = await Schedule.findOneAndUpdate(
+      { tournamentId: TOURNAMENT_ID },
+      { poolsLocked: locked },
+      { new: true }
+    );
+    if (!doc) return res.status(404).json({ error: 'No schedule to lock yet \u2014 randomize pools first' });
+    res.json({ ok: true, poolsLocked: doc.poolsLocked });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update pool lock' });
   }
 });
 

@@ -20,6 +20,8 @@ const MatchSchema = new mongoose.Schema(
     teamBId: { type: Number, default: null },
     teamAName: { type: String, default: '' },          // cached display name, avoids a join for the schedule view
     teamBName: { type: String, default: '' },
+    seedA: { type: Number, default: null },              // pool position (1..4) this slot needs — used to re-fill on re-randomization
+    seedB: { type: Number, default: null },
 
     scoreA: { type: Number, default: null },
     scoreB: { type: Number, default: null },
@@ -42,6 +44,7 @@ const ScheduleSchema = new mongoose.Schema(
     tournamentId: { type: String, required: true, unique: true, index: true },
     pools:        { type: [PoolAssignmentSchema], default: [] }, // the random draw result
     matches:      { type: [MatchSchema], default: [] },
+    poolsLocked:  { type: Boolean, default: false }, // TD marks the pool draw final; blocks further re-randomization until unlocked
     generatedAt:  { type: Date, default: Date.now },
   },
   { timestamps: true }
