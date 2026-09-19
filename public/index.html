@@ -692,51 +692,6 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
   .poster-card-header::before{display:none}
 }
 
-@media print{
-  /* Rules print reuses the live overlay's markup rather than building a
-     separate document \u2014 the content only depends on 3 CSS variables
-     (--gold, --muted, --fg-rgb via rules-card/rules-list backgrounds) plus
-     two hardcoded #fff text colors, so redefining those for print is
-     enough to make it legible on paper without duplicating any text.
-     Sizing/spacing below is deliberately aggressive \u2014 there's a lot of
-     rules text, and the whole thing needs to fit in 2 pages. */
-  @page{size:A4;margin:9mm}
-  #rules-overlay{
-    position:static!important;background:#fff!important;overflow:visible!important;
-    --gold:#8a6d00;--muted:#555;--text:#111;--fg-rgb:10,14,30;
-    font-size:8.5px!important;
-  }
-  body>*:not(#rules-overlay){display:none!important}
-  #rules-print-btn,#rules-close-btn,#theme-toggle{display:none!important}
-  #rules-overlay .rules-card-value,#rules-overlay .rules-list li strong{color:#111!important}
-  #rules-overlay .ex{color:#445!important}
-  #rules-overlay .rules-section{break-inside:avoid;margin-bottom:8px!important}
-  #rules-overlay .rules-section-title{font-size:0.62rem!important;letter-spacing:3px!important;margin-bottom:5px!important;padding-bottom:3px!important}
-  #rules-overlay .rules-section-title::before{width:2px!important;height:9px!important}
-  /* Overview cards: shrink the grid so it never spans more than the row it needs */
-  #rules-overlay .rules-card{padding:5px 7px!important;border-radius:4px!important}
-  #rules-overlay .rules-card-value{font-size:0.95rem!important}
-  #rules-overlay .rules-card-label{font-size:0.5rem!important;letter-spacing:1.5px!important;margin-bottom:1px!important}
-  #rules-overlay .rules-card-sub{font-size:0.55rem!important;margin-top:1px!important}
-  /* Rule lists: 2-column flow \u2014 short items, no reason to use only one
-     column's worth of page width */
-  #rules-overlay .rules-list{display:block!important;columns:2!important;column-gap:10px!important}
-  #rules-overlay .rules-list li{
-    display:inline-block!important;width:100%!important;break-inside:avoid;
-    font-size:0.62rem!important;line-height:1.25!important;
-    padding:3px 6px!important;margin-bottom:4px!important;border-radius:0 3px 3px 0!important;
-  }
-  #rules-overlay .rules-list li .ex{font-size:0.55rem!important;padding:2px 5px!important;margin-top:2px!important;line-height:1.2!important}
-  /* Tier grid table: compact rows */
-  #rules-overlay .rules-tier-table{font-size:0.6rem!important}
-  #rules-overlay .rules-tier-table th{font-size:0.48rem!important;padding:2px 6px!important;letter-spacing:1px!important}
-  #rules-overlay .rules-tier-table td{padding:2px 6px!important}
-  #rules-wrapper{max-width:100%!important;padding:0!important}
-  #rules-header-row{margin-bottom:8px!important}
-  #rules-header-title{font-size:1.2rem!important;letter-spacing:2px!important}
-  #rules-overlay .rules-grid{gap:5px!important;margin-bottom:6px!important}
-}
-
 /* ── RESPONSIVE ─────────────────────────────────── */
 
 /* Narrow split-screen / tablet (≤900px) */
@@ -3881,7 +3836,158 @@ function closeRules() {
 }
 
 function printRules() {
-  window.print();
+  // Builds a standalone print document (same reliable pattern as
+  // printRosterList/printPoster) rather than overriding the live dark-theme
+  // overlay in place \u2014 printing position:fixed dark-themed DOM via CSS
+  // overrides turned out fragile (inconsistent blank-page behavior across
+  // browsers). A dedicated, compact, 2-column light-themed document is
+  // simpler to get right and easier to guarantee fits 2 pages.
+  var tierRows = Object.keys(TIERS).map(function(t) {
+    return '<tr><td style="font-weight:700;">' + t + '</td>' +
+      '<td style="text-align:right;">' + TIERS[t].count + '</td>' +
+      '<td style="text-align:right;">$' + TIERS[t].base.toLocaleString() + '</td>' +
+      '<td style="text-align:right;">$' + captainCost(t).toLocaleString() + '</td></tr>';
+  }).join('');
+
+  var reserveRows = [1,2,3,4].map(function(n) {
+    return '<tr><td style="text-align:center;">' + n + '</td><td style="text-align:right;">$' + RESERVE_TABLE[n].toLocaleString() + '</td></tr>';
+  }).join('');
+
+  var roundRows = ROUND_DEFS.map(function(rd) {
+    var label = rd.tier ? rd.tier : 'Fire Sale (unsold, $25 off base)';
+    return '<tr><td style="text-align:center;">' + rd.id + '</td><td>' + label + '</td></tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<title>FVL Fall 2026 \u2014 Draft Rules</title>' +
+    '<style>' +
+      '*{box-sizing:border-box;margin:0;padding:0;}' +
+      'html,body{font-family:Arial,sans-serif;background:#fff;color:#222;font-size:10px;}' +
+      'body{padding:10px 12px 12px;}' +
+      '.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #d4a800;}' +
+      '.league-name{font-size:0.5rem;letter-spacing:4px;text-transform:uppercase;color:#999;margin-bottom:2px;}' +
+      '.doc-title{font-size:1.15rem;font-weight:900;letter-spacing:1.5px;color:#111;line-height:1;}' +
+      '.doc-sub{font-size:0.56rem;letter-spacing:1.5px;color:#666;margin-top:2px;}' +
+      '.hdr-right{text-align:right;font-size:0.56rem;color:#888;line-height:1.5;}' +
+      '.stat-bar{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;}' +
+      '.stat{flex:1;min-width:90px;background:#faf6e8;border-left:3px solid #d4a800;padding:4px 8px;}' +
+      '.stat-label{font-size:0.5rem;letter-spacing:1px;text-transform:uppercase;color:#888;}' +
+      '.stat-value{font-size:0.85rem;font-weight:800;color:#111;}' +
+      '.rules-cols{columns:2;column-gap:14px;}' +
+      '.sec{margin-bottom:8px;break-inside:avoid-column;}' +
+      '.sec-title{font-weight:800;font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:#a5820a;border-bottom:1px solid #eed98a;padding-bottom:2px;margin-bottom:4px;}' +
+      'ul{list-style:none;}' +
+      'li{font-size:0.66rem;line-height:1.35;padding:2px 0 2px 10px;position:relative;}' +
+      'li::before{content:"\\2022";position:absolute;left:0;color:#c8a000;font-weight:700;}' +
+      'li b{color:#111;}' +
+      'table{width:100%;border-collapse:collapse;font-size:0.64rem;margin-top:2px;}' +
+      'th{font-size:0.52rem;letter-spacing:0.5px;text-transform:uppercase;color:#888;text-align:left;padding:2px 5px;border-bottom:1px solid #ddd;}' +
+      'td{padding:2px 5px;border-bottom:1px solid #f0f0f0;}' +
+      '.footer{text-align:center;margin-top:6px;font-size:0.48rem;letter-spacing:2px;color:#aaa;text-transform:uppercase;border-top:1px solid #eee;padding-top:4px;}' +
+      '@media print{ @page{size:A4;margin:9mm} body{padding:0;font-size:9px;} }' +
+    '</style></head><body>' +
+
+    '<div class="page-header">' +
+      '<div>' +
+        '<div class="league-name">Fowler Volleyball League</div>' +
+        '<div class="doc-title">DRAFT RULES</div>' +
+        '<div class="doc-sub">Fall 2026 Season</div>' +
+      '</div>' +
+      '<div class="hdr-right">' + TEAM_COUNT + ' teams &middot; ' + Object.values(TIERS).reduce(function(s,t){return s+t.count;},0) + ' auctionable players<br>' +
+        '<span style="color:#aaa;">Printed ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + '</span>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="stat-bar">' +
+      '<div class="stat"><div class="stat-label">Starting Budget</div><div class="stat-value">$' + BUDGET.toLocaleString() + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Roster Size</div><div class="stat-value">' + ROSTER_SIZE + ' (1 captain + ' + (ROSTER_SIZE-1) + ')</div></div>' +
+      '<div class="stat"><div class="stat-label">Min Raise</div><div class="stat-value">$' + MIN_BID_INC + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Max Bid</div><div class="stat-value">$' + DEFAULT_MAX_BID.toLocaleString() + '</div></div>' +
+    '</div>' +
+
+    '<div class="rules-cols">' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Tiers &amp; Captain Cost</div>' +
+        '<table><thead><tr><th>Tier</th><th style="text-align:right;">Players</th><th style="text-align:right;">Base</th><th style="text-align:right;">Captain Cost</th></tr></thead>' +
+        '<tbody>' + tierRows + '</tbody></table>' +
+        '<div style="font-size:0.58rem;color:#888;margin-top:3px;">Captain cost = base + ' + Math.round(CAPTAIN_PREMIUM*100) + '%, rounded down to the nearest $' + MIN_BID_INC + ', deducted from that team\'s own budget before the auction begins. No per-tier draft limits \u2014 a team may draft any number of players from any tier, budget and roster size permitting.</div>' +
+      '</div>' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Draft Rounds (in order)</div>' +
+        '<table><thead><tr><th style="text-align:center;">#</th><th>Tier</th></tr></thead><tbody>' + roundRows + '</tbody></table>' +
+        '<div style="font-size:0.58rem;color:#888;margin-top:3px;">Each round is fully shuffled and randomly ordered. Fire Sale catches anything marked unsold in its own round, at a reduced price, open to all teams.</div>' +
+      '</div>' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Bidding</div>' +
+        '<ul>' +
+          '<li><b>Opening bid</b> = the player\'s tier base price.</li>' +
+          '<li><b>Raise:</b> every bid must raise by exactly $' + MIN_BID_INC + ' over the current high bid.</li>' +
+          '<li><b>Max bid / tiebreaker:</b> at $' + DEFAULT_MAX_BID.toLocaleString() + ', bidding freezes. Interested teams self-select into a random draw; one winner chosen by lot.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Reserve Floor</div>' +
+        '<table><thead><tr><th style="text-align:center;">Slots left</th><th style="text-align:right;">Reserve</th></tr></thead><tbody>' + reserveRows + '</tbody></table>' +
+        '<div style="font-size:0.58rem;color:#888;margin-top:3px;">A bid is blocked if it would leave less than the reserve needed for your remaining open roster slots \u2014 shown as "Over budget" on your bid control.</div>' +
+      '</div>' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Budget</div>' +
+        '<ul>' +
+          '<li>Every team starts with <b>$' + BUDGET.toLocaleString() + '</b>. A captain\'s cost comes out of this up front.</li>' +
+          '<li><b>Unspent budget does not carry over.</b> Use it or lose it.</li>' +
+          '<li>Sidebar shows a warning when remaining budget is running low relative to open slots.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Tournament Director Tools</div>' +
+        '<ul>' +
+          '<li><b>Manual override:</b> TD can assign the player on the block directly to a team at a chosen price, skipping live bidding.</li>' +
+          '<li><b>Manual budget adjustment:</b> TD can grant or deduct budget for any team mid-auction, for any operational reason \u2014 logged with a reason and timestamp.</li>' +
+          '<li><b>Unlimited undo:</b> TD can step back through any number of previous picks, not just the last one.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      '<div class="sec">' +
+        '<div class="sec-title">Rosters &amp; Captains</div>' +
+        '<ul>' +
+          '<li><b>' + TEAM_COUNT + ' teams</b>, each captained by a pre-selected player.</li>' +
+          '<li>Each team drafts <b>' + (ROSTER_SIZE-1) + ' more players</b> at auction (' + ROSTER_SIZE + ' total on the roster).</li>' +
+          '<li><b>Mark Unsold:</b> if no bids yet, the nominating captain can pass \u2014 the player re-enters via Fire Sale at a reduced price.</li>' +
+        '</ul>' +
+      '</div>' +
+
+    '</div>' +
+
+    '<div class="footer">FVL Fall 2026 &middot; fowlervolleyballleague.com &middot; Confidential \u2014 For Captain Use Only</div>' +
+    '</body></html>';
+
+  // Hidden iframe \u2014 same technique printRosterList uses, avoids popup blockers.
+  var iframe = document.getElementById('rules-print-frame');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'rules-print-frame';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;visibility:hidden;';
+    document.body.appendChild(iframe);
+  }
+  var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+  iDoc.open();
+  iDoc.write(html);
+  iDoc.close();
+
+  iframe.onload = function() {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+    catch(e) { console.warn('Print failed:', e); }
+  };
+  setTimeout(function() {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+    catch(e) {}
+  }, 400);
 }
 
 /* ── ADMIN (Tournament Director only) ── */
