@@ -3341,7 +3341,7 @@ function printRosterList() {
       '</div>' +
       '<div class="hdr-right">' +
         totalPlayers + ' auctionable players<br>' +
-        biryaniCount + ' Biryani, ' + mandiCount + ' Mandi &nbsp;·&nbsp; Max bid $2,100<br>' +
+        biryaniCount + ' Biryani, ' + mandiCount + ' Mandi &nbsp;·&nbsp; Max bid $' + DEFAULT_MAX_BID.toLocaleString() + '<br>' +
         'Budget per team: $' + BUDGET.toLocaleString() + '<br>' +
         '<span style="color:#aaa;">Printed ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + '</span>' +
       '</div>' +
@@ -3734,7 +3734,7 @@ function showRules() {
         '</div>',
         '<div class="rules-card">',
           '<div class="rules-card-label">Max Bid (Tiebreaker)</div>',
-          '<div class="rules-card-value">$2,100</div>',
+          '<div class="rules-card-value">$' + DEFAULT_MAX_BID.toLocaleString() + '</div>',
           '<div class="rules-card-sub">Same for every tier &mdash; triggers random draw</div>',
         '</div>',
       '</div>',
@@ -3781,16 +3781,16 @@ function showRules() {
         '<li><strong>Timer:</strong> Each bid resets a 15-second countdown. If time expires with no new bid, the current leader wins the player.',
           '<span class="ex">Stay alert &mdash; the timer does not pause between bids.</span>',
         '</li>',
-        '<li class="warn"><strong>Max bid &amp; tiebreaker:</strong> If bidding reaches <strong>$2,100</strong>, the timer freezes. All interested teams self-select into a random draw. One winner is chosen by lot &mdash; no further bidding.',
-          '<span class="ex">Example: 4 teams all want the same player at $2,100. All 4 click "Enter Draw." A random winner is picked live.</span>',
+        '<li class="warn"><strong>Max bid &amp; tiebreaker:</strong> If bidding reaches <strong>$' + DEFAULT_MAX_BID.toLocaleString() + '</strong>, the timer freezes. All interested teams self-select into a random draw. One winner is chosen by lot &mdash; no further bidding.',
+          '<span class="ex">Example: 4 teams all want the same player at $' + DEFAULT_MAX_BID.toLocaleString() + '. All 4 click "Enter Draw." A random winner is picked live.</span>',
         '</li>',
         '<li><strong>Mark Unsold:</strong> The nominating captain can declare a player unsold (if no bids yet). The player is queued for Fire Sale at a reduced price.',
         '</li>',
         '<li class="teal"><strong>TD Manual Override:</strong> When logged in as Tournament Director, a player on the block can be assigned directly to any team at any price, skipping live bidding entirely \u2014 for when time is short and the auction needs to move fast.',
-          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed the max bid ($2,100) \u2014 same cap as live bidding.</span>',
+          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed the max bid ($' + DEFAULT_MAX_BID.toLocaleString() + ') \u2014 same cap as live bidding.</span>',
         '</li>',
-        '<li class="teal"><strong>Force Tiebreaker:</strong> The TD can freeze bidding and open a random-draw tiebreaker at the <strong>current bid</strong> \u2014 not just at the $2,100 max. For when the leader is maxed out on their own budget/reserve (not the tier cap) and another team is similarly capped at that same price and would enter a draw there.',
-          '<span class="ex">Example: Team A is leading at $1,500 and can\'t legally raise further. Team B also can\'t exceed $1,500. TD clicks "Force Tiebreaker Here," both teams enter the draw, one is chosen at random \u2014 at $1,500, not $2,100.</span>',
+        '<li class="teal"><strong>Force Tiebreaker:</strong> The TD can freeze bidding and open a random-draw tiebreaker at the <strong>current bid</strong> \u2014 not just at the $' + DEFAULT_MAX_BID.toLocaleString() + ' max. For when the leader is maxed out on their own budget/reserve (not the tier cap) and another team is similarly capped at that same price and would enter a draw there.',
+          '<span class="ex">Example: Team A is leading at $1,500 and can\'t legally raise further. Team B also can\'t exceed $1,500. TD clicks "Force Tiebreaker Here," both teams enter the draw, one is chosen at random \u2014 at $1,500, not $' + DEFAULT_MAX_BID.toLocaleString() + '.</span>',
         '</li>',
       '</ul>',
     '</div>',
