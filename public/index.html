@@ -1194,9 +1194,19 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
       <div id="admin-budget-log" style="margin-top:16px;font-family:var(--fu);font-size:0.75rem;color:var(--text2);line-height:1.8;max-height:220px;overflow-y:auto;"></div>
     </div>
 
-    <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);text-align:center;margin-top:6px;">
-      Pool allocation, schedule, flyer, and reveal have moved to the <strong style="color:var(--gold);">\uD83C\uDFDF Tournament</strong> page (button in the header).
-    </p>
+    <div class="rules-section">
+      <div class="rules-section-title">Tournament Link</div>
+      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;max-width:560px;">
+        Pool allocation, schedule, flyer, editing the format, and full reveal control live on the
+        <strong style="color:var(--gold);">🏟 Tournament</strong> page (button in the header). This is just a shortcut for
+        the one thing captains/players actually need: publishing (or unpublishing) the public link.
+      </p>
+      <div id="admin-tournament-link-status" style="font-family:var(--fu);font-size:0.85rem;color:var(--text2);margin-bottom:10px;">Loading&hellip;</div>
+      <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="admin-toggle-reveal-btn" class="btn btn-gold" style="padding:9px 18px;">👁 Publish Tournament Link</button>
+        <button id="admin-copy-link-btn" class="btn btn-outline" style="padding:9px 18px;display:none;">🔗 Copy Link</button>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -4100,6 +4110,7 @@ function showAdmin() {
   document.body.style.overflow = 'hidden';
   loadAdminStats();
   renderAdminBudgetPanel();
+  loadAdminTournamentLinkStatus();
 }
 
 function closeAdmin() {
@@ -4232,6 +4243,75 @@ function _doApplyBudgetAdjustment(teamId, amount, reason) {
   renderBudgetSidebar();
   renderAdminBudgetPanel();
   toast('✓ ' + (amount > 0 ? '+' : '\u2212') + fmt(Math.abs(amount)) + ' applied to ' + team.name + '.', 'success');
+}
+
+/* ── ADMIN: Tournament Link (publish/unpublish shortcut) ── */
+
+async function loadAdminTournamentLinkStatus() {
+  const statusEl = document.getElementById('admin-tournament-link-status');
+  const toggleBtn = document.getElementById('admin-toggle-reveal-btn');
+  const copyBtn = document.getElementById('admin-copy-link-btn');
+  if (!statusEl) return;
+  statusEl.textContent = 'Loading…';
+  try {
+    const res = await fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN || '' } });
+    const cfg = await res.json();
+    if (!cfg) {
+      statusEl.textContent = 'No tournament set up yet — configure it on the Tournament page first.';
+      toggleBtn.style.display = 'none';
+      copyBtn.style.display = 'none';
+      return;
+    }
+    const revealed = !!cfg.revealed;
+    statusEl.innerHTML = revealed
+      ? '👁 <strong style="color:var(--success);">Published</strong> — visible to everyone at the link below.'
+      : '🔒 <strong style="color:var(--danger);">Not published</strong> — only the TD can see it right now.';
+    toggleBtn.textContent = revealed ? '🔒 Unpublish Tournament Link' : '👁 Publish Tournament Link';
+    toggleBtn.style.display = '';
+    copyBtn.style.display = revealed ? '' : 'none';
+  } catch (e) {
+    statusEl.textContent = 'Could not load tournament status.';
+  }
+}
+
+async function toggleTournamentReveal() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  try {
+    const cfgRes = await fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN } });
+    const cfg = await cfgRes.json();
+    if (!cfg) { toast('No tournament set up yet.', 'danger'); return; }
+    const nextRevealed = !cfg.revealed;
+    openModal(
+      nextRevealed ? 'Publish Tournament Link' : 'Unpublish Tournament Link',
+      nextRevealed
+        ? 'This makes the tournament page — format, schedule, standings, flyer — visible to anyone with the link, not just the TD. Continue?'
+        : 'This hides the tournament page again — back to TD-only. Continue?',
+      async function() {
+        const res = await fetch('/api/tournament/config/reveal', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+          body: JSON.stringify({ revealed: nextRevealed }),
+        });
+        const body = await res.json();
+        if (!res.ok) { toast('⚠ ' + (body.error || res.status), 'danger'); return; }
+        toast(nextRevealed ? '👁 Tournament link published.' : '🔒 Tournament link unpublished.', 'info');
+        loadAdminTournamentLinkStatus();
+      }
+    );
+  } catch (e) {
+    toast('⚠ Could not check tournament status.', 'danger');
+  }
+}
+
+function copyTournamentLink() {
+  const url = location.origin + '/tournament.html';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => toast('🔗 Link copied: ' + url, 'success'))
+      .catch(() => toast('🔗 ' + url, 'info', 6000));
+  } else {
+    toast('🔗 ' + url, 'info', 6000);
+  }
 }
 
 function exportCSV() {
@@ -4367,6 +4447,8 @@ function attachEventListeners() {
     );
   });
   document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
+  document.getElementById('admin-toggle-reveal-btn').addEventListener('click', toggleTournamentReveal);
+  document.getElementById('admin-copy-link-btn').addEventListener('click', copyTournamentLink);
 
   // TD manual override controls
   var ovTeam   = document.getElementById('td-override-team');

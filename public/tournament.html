@@ -121,6 +121,7 @@ a.link:hover{text-decoration:underline;}
 .ref-toggle{display:flex;border-radius:5px;overflow:hidden;border:1px solid var(--border2);}
 .ref-toggle button{font-family:var(--fu);font-size:0.7rem;padding:7px 12px;background:var(--surface2);color:var(--text2);border:none;cursor:pointer;}
 .ref-toggle button.active{background:var(--gold);color:#241a02;}
+.td-only{display:none;}
 
 /* Format diagram */
 .diagram-stage-label{font-family:var(--fu);font-size:0.66rem;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;}
@@ -159,19 +160,29 @@ a.link:hover{text-decoration:underline;}
 </div>
 
 <div id="app" class="wrap" style="display:none;">
-  <div class="eyebrow">Fowler Volleyball League — TD Only</div>
+  <div class="eyebrow" id="app-eyebrow">Fowler Volleyball League</div>
   <h1 id="tourney-name">Tournament</h1>
   <div class="status-line" id="mini-status" style="margin-top:10px;"></div>
 
-  <!-- LANDING MENU -->
-  <div id="view-menu" class="view active">
+  <!-- PUBLIC LANDING (shown instead of the menu when not logged in as TD) -->
+  <div id="view-public-landing" class="view">
+    <div class="card" id="public-summary-card"></div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn gold" id="public-schedule-btn">🏐 View Schedule</button>
+      <button class="btn outline" id="public-standings-btn">🏆 View Standings</button>
+      <button class="btn outline" id="public-flyer-btn">📋 View Flyer</button>
+    </div>
+  </div>
+
+  <!-- LANDING MENU (TD only) -->
+  <div id="view-menu" class="view">
     <div class="menu-grid">
       <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
-      <button class="menu-card" data-view="pools"><div class="icon">🎲</div><div class="title">Pool Allocation</div><div class="sub">Randomize &amp; lock</div></button>
+      <button class="menu-card td-only" data-view="pools"><div class="icon">🎲</div><div class="title">Pool Allocation</div><div class="sub">Randomize &amp; lock</div></button>
       <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
       <button class="menu-card" id="menu-standings-btn"><div class="icon">🏆</div><div class="title">Standings</div><div class="sub">Pool ranks &amp; bracket results</div></button>
-      <button class="menu-card" data-view="rosters"><div class="icon">🔒</div><div class="title">Final Rosters</div><div class="sub">Lock for Scores/Standings</div></button>
-      <button class="menu-card" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
+      <button class="menu-card td-only" data-view="rosters"><div class="icon">🔒</div><div class="title">Final Rosters</div><div class="sub">Lock for Scores/Standings</div></button>
+      <button class="menu-card td-only" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
     </div>
   </div>
 
@@ -184,7 +195,7 @@ a.link:hover{text-decoration:underline;}
       <div id="prizes-wrap"></div>
       <div class="btn-row">
         <button class="btn outline" id="view-flyer-btn">📋 View Flyer</button>
-        <button class="btn outline" id="edit-format-btn">✏️ Edit Format</button>
+        <button class="btn outline td-only" id="edit-format-btn">✏️ Edit Format</button>
       </div>
     </div>
 
@@ -315,6 +326,8 @@ a.link:hover{text-decoration:underline;}
 
 <script>
 let TD_TOKEN = null;
+let IS_TD = false;
+let REVEALED = false;
 let CFG = null, LOCKED = null, SCHED = null;
 
 function toast(msg) { alert(msg); }
@@ -333,16 +346,40 @@ async function boot() {
   const fromSession = sessionStorage.getItem('fvl_td_token');
   const candidate = fromQuery || fromSession;
 
+  // Try opening with no token first \u2014 works once revealed, for anyone.
+  let revealedOpen = false;
+  try {
+    const res = await fetch('/api/tournament/config');
+    revealedOpen = res.ok;
+  } catch (e) {}
+
+  // Separately try to ALSO authenticate as TD \u2014 unlocks the TD menu and
+  // controls on top of whatever a public viewer already sees. Not required
+  // just to view a revealed tournament.
   if (candidate && await checkToken(candidate)) {
     TD_TOKEN = candidate;
+    IS_TD = true;
     try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('app').style.display = '';
-    loadAll();
+  }
+
+  if (revealedOpen || IS_TD) {
+    REVEALED = revealedOpen;
+    enterApp();
     return;
   }
+
   document.getElementById('gate').style.display = '';
   document.getElementById('app').style.display = 'none';
+}
+
+function enterApp() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  document.getElementById('app-eyebrow').textContent = 'Fowler Volleyball League' + (IS_TD ? ' — TD View' : '');
+  document.body.classList.toggle('is-td', IS_TD);
+  document.querySelectorAll('.td-only').forEach(el => { el.style.display = IS_TD ? '' : 'none'; });
+  showView(IS_TD ? 'menu' : 'public-landing');
+  loadAll();
 }
 
 async function submitGate() {
@@ -358,10 +395,9 @@ async function submitGate() {
     if (!res.ok) { errEl.style.display = 'block'; return; }
     const body = await res.json();
     TD_TOKEN = body.token;
+    IS_TD = true;
     try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('app').style.display = '';
-    loadAll();
+    enterApp();
   } catch (e) {
     errEl.textContent = 'Could not reach the server.';
     errEl.style.display = 'block';
@@ -387,24 +423,48 @@ document.querySelectorAll('.menu-card[data-view]').forEach(btn => {
 document.getElementById('menu-standings-btn').addEventListener('click', () => {
   window.open('/standings.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
 });
-document.querySelectorAll('[data-back]').forEach(btn => {
-  btn.addEventListener('click', () => showView('menu'));
+document.getElementById('public-schedule-btn').addEventListener('click', () => showView('schedule'));
+document.getElementById('public-standings-btn').addEventListener('click', () => {
+  window.open('/standings.html', '_blank');
 });
+document.getElementById('public-flyer-btn').addEventListener('click', () => viewFlyer());
+document.querySelectorAll('[data-back]').forEach(btn => {
+  btn.addEventListener('click', () => showView(IS_TD ? 'menu' : 'public-landing'));
+});
+
+function renderPublicLanding() {
+  if (!CFG) return;
+  const tiers = (CFG.tiers || []).slice().sort((a,b) => a.order - b.order).map(t => t.name).join(' \u00b7 ');
+  document.getElementById('public-summary-card').innerHTML = `
+    <div class="stat-row">
+      <div class="stat"><b>Date</b>${CFG.date || '\u2014'}</div>
+      <div class="stat"><b>Venue</b>${CFG.venue || '\u2014'}</div>
+      <div class="stat"><b>Teams</b>${CFG.teamCount || '\u2014'}</div>
+    </div>
+    <p class="hint" style="font-size:0.85rem;color:var(--text);margin-top:14px;">
+      ${CFG.teamCount || ''} teams battle through pool play, then split into <b>${tiers}</b> tiers for a
+      single-elimination bracket. Check the schedule to find your match, or jump straight to standings
+      to see how pool play and the bracket are shaping up.
+    </p>`;
+}
 
 /* ── Data loading ── */
 async function loadAll() {
-  const headers = { 'x-td-token': TD_TOKEN };
-  const [cfgRes, lockedRes, schedRes] = await Promise.all([
+  const headers = TD_TOKEN ? { 'x-td-token': TD_TOKEN } : {};
+  const fetches = [
     fetch('/api/tournament/config', { headers }),
-    fetch('/api/tournament/locked', { headers }),
     fetch('/api/tournament/schedule', { headers }),
-  ]);
+  ];
+  if (IS_TD) fetches.push(fetch('/api/tournament/locked', { headers })); // TD-only endpoint, skip entirely for public viewers
+
+  const [cfgRes, schedRes, lockedRes] = await Promise.all(fetches);
   CFG    = await cfgRes.json();
-  LOCKED = await lockedRes.json();
   SCHED  = await schedRes.json();
+  LOCKED = lockedRes ? await lockedRes.json() : null;
 
   renderFormat();
-  renderMiniStatus();
+  renderPublicLanding();
+  if (IS_TD) renderMiniStatus();
   renderScheduleFilters();
   renderScheduleTable();
   renderPoolsCurrent();
@@ -661,7 +721,7 @@ function renderScheduleTable() {
         : `${m.teamAName} vs ${m.teamBName}`;
       const scoreCell = m.completed ? `${m.scoreA} – ${m.scoreB}` : '<span style="color:var(--muted);">—</span>';
       const refCell = m.refereeTeamName ? `<span class="pill ref">${m.refereeTeamName}</span>` : '<span style="color:var(--muted);">—</span>';
-      const canScore = m.teamAId !== null && m.teamBId !== null;
+      const canScore = IS_TD && m.teamAId !== null && m.teamBId !== null;
       const scoreBtn = canScore ? `<button class="btn small outline" data-score-match="${m.matchId}">${m.completed ? 'Edit' : 'Score'}</button>` : '';
       return `<tr><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${m.label}</td><td>${teamsCell}</td><td>${scoreCell}</td><td>${refCell}</td><td>${scoreBtn}</td></tr>`;
     }).join('') +
