@@ -2527,15 +2527,30 @@ function nominatePlayer(playerId, isManual = false) {
   if (player.drafted) { toast('Player already drafted!', 'danger'); return; }
   if (player.isCaptain) { toast('Captains are pre-assigned.', 'danger'); return; }
 
-  const canAfford = state.teams.some(t => {
-    if (teamAuctionSlotsLeft(t) <= 0) return false;
-    const spotsAfter = teamAuctionSlotsLeft(t) - 1;
-    const reserve    = RESERVE_MIN(spotsAfter);
-    return player.currentBase + reserve <= t.budget;
-  });
+  function canAffordAt(price) {
+    return state.teams.some(t => {
+      if (teamAuctionSlotsLeft(t) <= 0) return false;
+      const spotsAfter = teamAuctionSlotsLeft(t) - 1;
+      const reserve    = RESERVE_MIN(spotsAfter);
+      return price + reserve <= t.budget;
+    });
+  }
 
-  if (!canAfford) {
-    toast(`No team can afford ${player.name} right now.`, 'danger');
+  // If nobody can currently afford this player at their listed price,
+  // don't just skip them silently \u2014 keep cutting $50 off (same as a
+  // Fire Sale discount, just repeatable) until some team can, so they
+  // always eventually come up for bid instead of getting stuck unsold
+  // with no path back onto the block. Floors at $25, same floor the
+  // regular Fire Sale discount already uses.
+  var discounted = false;
+  while (!canAffordAt(player.currentBase) && player.currentBase > 25) {
+    player.currentBase = Math.max(25, player.currentBase - 50);
+    discounted = true;
+  }
+  if (discounted) player.unsold = true;
+
+  if (!canAffordAt(player.currentBase)) {
+    toast(`No team can afford ${player.name} even at the $25 floor \u2014 skipping for now.`, 'danger');
     return;
   }
 
@@ -3774,6 +3789,8 @@ function showRules() {
         '<li class="teal"><strong>Round 6 &mdash; Fire Sale:</strong> Any player not sold in rounds 1&ndash;5 returns at a <strong>reduced base price ($25 less)</strong>. All teams can bid.',
           '<span class="ex">Example: A Samosa player with $650 base that went unsold returns at $625 in Fire Sale.</span>',
         '</li>',
+        '<li class="teal"><strong>Auto-discount when unaffordable:</strong> If no team can currently afford a player at their listed price (given remaining budget and reserve), the price automatically drops $50 at a time \u2014 down to a $25 floor \u2014 until some team can. This applies any time a player comes up, not just in Fire Sale, so nobody gets permanently stuck unsold with no way back onto the block.',
+        '</li>',
       '</ul>',
     '</div>',
 
@@ -3972,7 +3989,7 @@ function printRules() {
       '<div class="sec">' +
         '<div class="sec-title">Draft Rounds (in order)</div>' +
         '<table><thead><tr><th style="text-align:center;">#</th><th>Tier</th></tr></thead><tbody>' + roundRows + '</tbody></table>' +
-        '<div style="font-size:0.58rem;color:#888;margin-top:3px;">Each round is fully shuffled and randomly ordered. Fire Sale catches anything marked unsold in its own round, at a reduced price, open to all teams.</div>' +
+        '<div style="font-size:0.58rem;color:#888;margin-top:3px;">Each round is fully shuffled and randomly ordered. Fire Sale catches anything marked unsold in its own round, at a reduced price, open to all teams. Any player nobody can currently afford auto-discounts $50 at a time (down to a $25 floor) until someone can \u2014 applies whenever they come up, not just in Fire Sale.</div>' +
       '</div>' +
 
       '<div class="sec">' +
