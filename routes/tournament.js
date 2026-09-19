@@ -59,7 +59,7 @@ router.post('/lock', requireTd, async (req, res) => {
 
     const doc = await LockedRoster.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { tournamentId: TOURNAMENT_ID, teams, lockedAt: new Date() },
+      { $set: { tournamentId: TOURNAMENT_ID, teams, lockedAt: new Date() } },
       { upsert: true, new: true }
     );
 
@@ -95,7 +95,7 @@ router.put('/config', requireTd, async (req, res) => {
     const body = req.body || {};
     const doc = await TournamentConfig.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { ...body, tournamentId: TOURNAMENT_ID },
+      { $set: { ...body, tournamentId: TOURNAMENT_ID } },
       { upsert: true, new: true }
     );
     res.json({ ok: true, config: doc });
@@ -110,7 +110,7 @@ router.patch('/config/reveal', requireTd, async (req, res) => {
     const revealed = !!(req.body && req.body.revealed);
     const doc = await TournamentConfig.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { revealed },
+      { $set: { revealed } },
       { new: true }
     );
     if (!doc) return res.status(404).json({ error: 'No tournament config yet' });
@@ -195,7 +195,7 @@ router.post('/schedule/randomize-pools', requireTd, async (req, res) => {
 
     const doc = await Schedule.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { tournamentId: TOURNAMENT_ID, pools, matches: poolMatches.concat(tieredMatches), generatedAt: new Date() },
+      { $set: { tournamentId: TOURNAMENT_ID, pools, matches: poolMatches.concat(tieredMatches), generatedAt: new Date() } },
       { upsert: true, new: true }
     );
 
@@ -211,7 +211,7 @@ router.patch('/schedule/lock-pools', requireTd, async (req, res) => {
     const locked = !!(req.body && req.body.locked);
     const doc = await Schedule.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { poolsLocked: locked },
+      { $set: { poolsLocked: locked } },
       { new: true }
     );
     if (!doc) return res.status(404).json({ error: 'No schedule to lock yet \u2014 randomize pools first' });

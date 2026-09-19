@@ -136,6 +136,11 @@ a.link:hover{text-decoration:underline;}
 .mini-round{font-family:var(--fu);font-size:0.66rem;color:var(--text);padding:3px 0;border-top:1px dashed var(--border);}
 .mini-round:first-of-type{border-top:none;}
 .mini-round b{color:var(--cyan);font-weight:700;}
+.edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.edit-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+.edit-row input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--fu);font-size:0.82rem;padding:6px 9px;min-width:0;}
+.edit-row input.narrow{flex:0 0 70px;}
+.edit-row .rm-row{flex:0 0 auto;background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;padding:2px 6px;}
 </style>
 </head>
 <body>
@@ -179,8 +184,40 @@ a.link:hover{text-decoration:underline;}
       <div id="prizes-wrap"></div>
       <div class="btn-row">
         <button class="btn outline" id="view-flyer-btn">📋 View Flyer</button>
+        <button class="btn outline" id="edit-format-btn">✏️ Edit Format</button>
       </div>
     </div>
+
+    <div class="card" id="format-edit-card" style="display:none;">
+      <h2>Edit Format</h2>
+      <div class="edit-grid">
+        <div class="filter-field"><label>Name</label><input id="ef-name" type="text"></div>
+        <div class="filter-field"><label>Date</label><input id="ef-date" type="text" placeholder="Sat, Oct 10, 2026"></div>
+        <div class="filter-field"><label>Venue</label><input id="ef-venue" type="text"></div>
+        <div class="filter-field"><label>Courts</label><input id="ef-courts" type="number" min="1"></div>
+        <div class="filter-field"><label>Team Count</label><input id="ef-teamCount" type="number" min="1"></div>
+        <div class="filter-field"><label>Pool Count</label><input id="ef-poolCount" type="number" min="1"></div>
+        <div class="filter-field"><label>Pool Size</label><input id="ef-poolSize" type="number" min="1"></div>
+        <div class="filter-field"><label>Pool Play Start</label><input id="ef-timeStart" type="text" placeholder="08:40"></div>
+        <div class="filter-field"><label>Post-League Start</label><input id="ef-postLeagueStart" type="text" placeholder="14:10"></div>
+        <div class="filter-field"><label>Event End</label><input id="ef-timeEnd" type="text" placeholder="17:50"></div>
+      </div>
+
+      <h2 style="margin-top:18px;">Tiers</h2>
+      <div id="ef-tiers-rows"></div>
+      <button class="btn small outline" id="ef-add-tier">+ Add Tier</button>
+
+      <h2 style="margin-top:18px;">Prizes</h2>
+      <div id="ef-prizes-rows"></div>
+      <button class="btn small outline" id="ef-add-prize">+ Add Prize</button>
+
+      <div class="btn-row" style="margin-top:18px;">
+        <button class="btn gold" id="ef-save-btn">Save Format</button>
+        <button class="btn outline" id="ef-cancel-btn">Cancel</button>
+      </div>
+      <p class="hint">Pool count/size changes only take effect on the next pool randomization \u2014 the current schedule (if any) isn't touched until you re-randomize.</p>
+    </div>
+
     <div class="card">
       <h2>How It Works</h2>
       <div id="format-diagram"></div>
@@ -430,6 +467,117 @@ function renderFormatDiagram() {
     '<div class="diagram-stage-label">Stage 2 &mdash; Tiered Bracket</div>' +
     '<div class="diagram-row">' + tiersHtml + '</div>';
 }
+
+/* ── Edit Format ── */
+function tierRowHtml(tier) {
+  const name = tier ? tier.name : '';
+  const order = tier ? tier.order : 0;
+  return `<div class="edit-row" data-tier-row>
+    <input type="text" class="ef-tier-name" placeholder="Tier name" value="${name.replace(/"/g,'&quot;')}">
+    <input type="number" class="ef-tier-order narrow" placeholder="Order" value="${order}" title="0 = highest tier">
+    <button class="rm-row" data-rm>✕</button>
+  </div>`;
+}
+function prizeRowHtml(prize) {
+  const award = prize ? prize.award : '';
+  const tier  = prize ? prize.tier : '';
+  const type  = prize ? prize.type : '';
+  return `<div class="edit-row" data-prize-row>
+    <input type="text" class="ef-prize-award" placeholder="Award" value="${award.replace(/"/g,'&quot;')}">
+    <input type="text" class="ef-prize-tier" placeholder="Tier" value="${tier.replace(/"/g,'&quot;')}">
+    <input type="text" class="ef-prize-type" placeholder="Type" value="${type.replace(/"/g,'&quot;')}">
+    <button class="rm-row" data-rm>✕</button>
+  </div>`;
+}
+function wireRemoveButtons(container) {
+  container.querySelectorAll('[data-rm]').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('[data-tier-row],[data-prize-row]').remove());
+  });
+}
+
+function openEditFormat() {
+  if (!CFG) return;
+  document.getElementById('ef-name').value = CFG.name || '';
+  document.getElementById('ef-date').value = CFG.date || '';
+  document.getElementById('ef-venue').value = CFG.venue || '';
+  document.getElementById('ef-courts').value = CFG.courts || 1;
+  document.getElementById('ef-teamCount').value = CFG.teamCount || '';
+  document.getElementById('ef-poolCount').value = CFG.poolCount || '';
+  document.getElementById('ef-poolSize').value = CFG.poolSize || '';
+  document.getElementById('ef-timeStart').value = CFG.timeStart || '';
+  document.getElementById('ef-postLeagueStart').value = CFG.postLeagueStart || '';
+  document.getElementById('ef-timeEnd').value = CFG.timeEnd || '';
+
+  const tiersWrap = document.getElementById('ef-tiers-rows');
+  tiersWrap.innerHTML = (CFG.tiers || []).slice().sort((a,b) => a.order - b.order).map(tierRowHtml).join('');
+  wireRemoveButtons(tiersWrap);
+
+  const prizesWrap = document.getElementById('ef-prizes-rows');
+  prizesWrap.innerHTML = (CFG.prizes || []).map(prizeRowHtml).join('');
+  wireRemoveButtons(prizesWrap);
+
+  document.getElementById('format-edit-card').style.display = '';
+}
+
+function closeEditFormat() {
+  document.getElementById('format-edit-card').style.display = 'none';
+}
+
+document.getElementById('ef-add-tier').addEventListener('click', () => {
+  const wrap = document.getElementById('ef-tiers-rows');
+  wrap.insertAdjacentHTML('beforeend', tierRowHtml(null));
+  wireRemoveButtons(wrap);
+});
+document.getElementById('ef-add-prize').addEventListener('click', () => {
+  const wrap = document.getElementById('ef-prizes-rows');
+  wrap.insertAdjacentHTML('beforeend', prizeRowHtml(null));
+  wireRemoveButtons(wrap);
+});
+
+async function saveFormat() {
+  const tiers = [...document.querySelectorAll('[data-tier-row]')].map(row => ({
+    name: row.querySelector('.ef-tier-name').value.trim(),
+    order: parseInt(row.querySelector('.ef-tier-order').value, 10) || 0,
+  })).filter(t => t.name);
+
+  const prizes = [...document.querySelectorAll('[data-prize-row]')].map(row => ({
+    award: row.querySelector('.ef-prize-award').value.trim(),
+    tier: row.querySelector('.ef-prize-tier').value.trim(),
+    type: row.querySelector('.ef-prize-type').value.trim(),
+  })).filter(p => p.award);
+
+  const body = {
+    name: document.getElementById('ef-name').value.trim(),
+    date: document.getElementById('ef-date').value.trim(),
+    venue: document.getElementById('ef-venue').value.trim(),
+    courts: parseInt(document.getElementById('ef-courts').value, 10) || 1,
+    teamCount: parseInt(document.getElementById('ef-teamCount').value, 10) || 0,
+    poolCount: parseInt(document.getElementById('ef-poolCount').value, 10) || 0,
+    poolSize: parseInt(document.getElementById('ef-poolSize').value, 10) || 0,
+    timeStart: document.getElementById('ef-timeStart').value.trim(),
+    postLeagueStart: document.getElementById('ef-postLeagueStart').value.trim(),
+    timeEnd: document.getElementById('ef-timeEnd').value.trim(),
+    tiers, prizes,
+  };
+
+  if (!body.name || !body.poolCount || !body.poolSize) { toast('Name, pool count, and pool size are required.'); return; }
+  if (tiers.length === 0) { toast('Add at least one tier.'); return; }
+
+  const res = await fetch('/api/tournament/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+    body: JSON.stringify(body),
+  });
+  const respBody = await res.json();
+  if (!res.ok) { toast('Error: ' + (respBody.error || res.status)); return; }
+  toast('Format saved.');
+  closeEditFormat();
+  loadAll();
+}
+
+document.getElementById('edit-format-btn').addEventListener('click', openEditFormat);
+document.getElementById('ef-cancel-btn').addEventListener('click', closeEditFormat);
+document.getElementById('ef-save-btn').addEventListener('click', saveFormat);
 
 function renderMiniStatus() {
   const lines = [];
