@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FVL — Standings</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
+:root{
+  --ink:#05080f;--surface:#0d1425;--surface2:#111d34;--surface3:#172240;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#eef2ff;--text2:#8fa0c0;--muted:#4a5a80;
+  --gold:#f0c040;--gold2:#ffd96a;
+  --cyan:#38d9f5;--danger:#f03050;--success:#22d68a;
+  --fd:'Bebas Neue',sans-serif;--fu:'Rajdhani',sans-serif;--fb:'DM Sans',sans-serif;
+  --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--ink);color:var(--text);font-family:var(--fb);min-height:100vh;padding:24px 16px 60px;}
+.wrap{max-width:960px;margin:0 auto;}
+h1{font-family:var(--fd);font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;color:var(--gold);}
+.eyebrow{font-family:var(--fu);font-size:0.72rem;letter-spacing:4px;text-transform:uppercase;color:var(--text2);margin-bottom:4px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:18px;}
+.card h2{font-family:var(--fu);font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+table{width:100%;border-collapse:collapse;margin-top:4px;font-family:var(--fu);font-size:0.85rem;}
+th{text-align:left;padding:6px 8px;font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);}
+td{padding:6px 8px;border-bottom:1px dashed var(--border);}
+td.num{text-align:right;}
+tr.rank-1 td:first-child{color:var(--gold);font-weight:700;}
+.pill{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--fu);font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.pill.success{background:rgba(34,214,138,0.15);color:var(--success);}
+.pill.muted{background:rgba(255,255,255,0.06);color:var(--text2);}
+.bracket-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.bracket-tier h3{font-family:var(--fu);font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2);margin-bottom:6px;}
+.bmatch{display:flex;justify-content:space-between;padding:5px 8px;border-bottom:1px dashed var(--border);font-size:0.8rem;}
+.bmatch .lbl{color:var(--text2);font-size:0.68rem;}
+.bmatch .res{color:var(--text);}
+.tbd{color:var(--muted);}
+.gate{max-width:340px;margin:80px auto;text-align:center;}
+.gate input{width:100%;padding:12px;margin-top:16px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--fu);font-size:1rem;text-align:center;}
+.gate .err{color:var(--danger);font-family:var(--fu);font-size:0.8rem;margin-top:10px;display:none;}
+.btn{font-family:var(--fu);font-weight:600;font-size:0.8rem;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);cursor:pointer;}
+.btn.gold{background:var(--gold);color:#241a02;border-color:var(--gold);}
+.empty{color:var(--muted);font-family:var(--fu);text-align:center;padding:20px;}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="eyebrow">Fowler Volleyball League</div>
+  <h1>Standings</h1>
+  <p style="font-family:var(--fu);color:var(--text2);margin-top:8px;" id="gate-msg">Tournament Director access only</p>
+  <input id="gate-pw" type="password" placeholder="TD password" autocomplete="off">
+  <div style="margin-top:12px;"><button class="btn gold" id="gate-btn">Enter</button></div>
+  <div class="err" id="gate-err">Incorrect password.</div>
+</div>
+
+<div id="app" class="wrap" style="display:none;">
+  <div class="eyebrow">Fowler Volleyball League</div>
+  <h1>Standings</h1>
+
+  <div class="card" id="pools-empty" style="display:none;"><div class="empty">No pool results yet.</div></div>
+  <div id="pools-wrap"></div>
+
+  <div class="card">
+    <h2>Post-League Bracket</h2>
+    <div id="tiered-wrap"><div class="empty">Not started yet.</div></div>
+  </div>
+</div>
+
+<script>
+let TD_TOKEN = null;
+let REVEALED = false;
+
+async function tryOpen(token) {
+  // Open-if-revealed, else TD-only \u2014 same gate the rest of the tournament uses.
+  try {
+    const cfgRes = await fetch('/api/tournament/config', token ? { headers: { 'x-td-token': token } } : {});
+    if (cfgRes.ok) return true;
+  } catch (e) {}
+  return false;
+}
+
+async function boot() {
+  const params = new URLSearchParams(location.search);
+  const fromQuery = params.get('td');
+  const fromSession = sessionStorage.getItem('fvl_td_token');
+  const candidate = fromQuery || fromSession;
+
+  // First try with no token at all \u2014 works once revealed.
+  if (await tryOpen(null)) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadAll();
+    return;
+  }
+  // Not revealed \u2014 try a TD token if we have one.
+  if (candidate && await tryOpen(candidate)) {
+    TD_TOKEN = candidate;
+    try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadAll();
+    return;
+  }
+  document.getElementById('gate').style.display = '';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function submitGate() {
+  const pw = document.getElementById('gate-pw').value;
+  const errEl = document.getElementById('gate-err');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/td/auth', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!res.ok) { errEl.style.display = 'block'; return; }
+    const body = await res.json();
+    TD_TOKEN = body.token;
+    try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadAll();
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function loadAll() {
+  const headers = TD_TOKEN ? { 'x-td-token': TD_TOKEN } : {};
+  const res = await fetch('/api/tournament/standings', { headers });
+  const data = await res.json();
+  renderPools(data.pools || {});
+  renderTiered(data.tiered || []);
+}
+
+function renderPools(pools) {
+  const poolNames = Object.keys(pools).sort();
+  const wrap = document.getElementById('pools-wrap');
+  if (!poolNames.length) {
+    document.getElementById('pools-empty').style.display = '';
+    wrap.innerHTML = '';
+    return;
+  }
+  document.getElementById('pools-empty').style.display = 'none';
+  wrap.innerHTML = poolNames.map(p => {
+    const { rows, complete } = pools[p];
+    const statusPill = complete ? '<span class="pill success">Final</span>' : '<span class="pill muted">In Progress</span>';
+    return `<div class="card"><h2>Pool ${p} ${statusPill}</h2>
+      <table><thead><tr><th>#</th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Diff</th><th class="num">Pts</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="rank-${r.rank}"><td>${r.rank}</td><td>${r.teamName}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }).join('');
+}
+
+function renderTiered(tiered) {
+  if (!tiered.length) return;
+  const tierNames = [...new Set(tiered.map(m => m.group))];
+  const order = ['Gold','Silver','Bronze','Copper'];
+  tierNames.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+
+  function line(m) {
+    const teams = (m.teamAId === null || m.teamBId === null) ? '<span class="tbd">TBD</span>' : `${m.teamAName} vs ${m.teamBName}`;
+    const res = m.completed ? `<span class="res">${m.scoreA}\u2013${m.scoreB}</span>` : '';
+    return `<div class="bmatch"><span class="lbl">${m.label.replace(m.group + ' ', '')}</span><span>${teams} ${res}</span></div>`;
+  }
+
+  document.getElementById('tiered-wrap').innerHTML =
+    '<div class="bracket-grid">' +
+    tierNames.map(t => {
+      const matches = tiered.filter(m => m.group === t).sort((a,b) => a.timeStart < b.timeStart ? -1 : 1);
+      return `<div class="bracket-tier"><h3>${t}</h3>${matches.map(line).join('')}</div>`;
+    }).join('') +
+    '</div>';
+}
+
+document.getElementById('gate-btn').addEventListener('click', submitGate);
+document.getElementById('gate-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitGate(); });
+
+boot();
+</script>
+</body>
+</html>

@@ -35,6 +35,7 @@ const TournamentConfigSchema = new mongoose.Schema(
     date:         { type: String, default: '' },     // display string, e.g. "Sat, Oct 10, 2026"
     timeStart:    { type: String, default: '' },
     timeEnd:      { type: String, default: '' },
+    postLeagueStart: { type: String, default: '' }, // when the tiered bracket (semis) begins, e.g. "14:10"
     venue:        { type: String, default: '' },
     courts:       { type: Number, default: 1 },
 

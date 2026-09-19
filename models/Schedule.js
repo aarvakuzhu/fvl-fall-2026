@@ -28,6 +28,13 @@ const MatchSchema = new mongoose.Schema(
     scoreA: { type: Number, default: null },
     scoreB: { type: Number, default: null },
     completed: { type: Boolean, default: false },
+
+    // Tiered matches only \u2014 how to resolve teamA/teamB once pool
+    // standings or semi results exist. { type:'poolRank', pool, rank } or
+    // { type:'semiResult', matchId, outcome:'winner'|'loser' }. Shape
+    // varies by type, hence Mixed.
+    sourceA: { type: mongoose.Schema.Types.Mixed, default: null },
+    sourceB: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { _id: false }
 );

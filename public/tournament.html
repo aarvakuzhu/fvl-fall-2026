@@ -99,6 +99,7 @@ a.link:hover{text-decoration:underline;}
       <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
       <button class="menu-card" data-view="pools"><div class="icon">🎲</div><div class="title">Pool Allocation</div><div class="sub">Randomize &amp; lock</div></button>
       <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
+      <button class="menu-card" id="menu-standings-btn"><div class="icon">🏆</div><div class="title">Standings</div><div class="sub">Pool ranks &amp; bracket results</div></button>
       <button class="menu-card" data-view="rosters"><div class="icon">🔒</div><div class="title">Final Rosters</div><div class="sub">Lock for Scores/Standings</div></button>
       <button class="menu-card" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
     </div>
@@ -128,6 +129,10 @@ a.link:hover{text-decoration:underline;}
         <button class="btn outline" id="lock-pools-btn">🔒 Lock Pool Allocation</button>
       </div>
     </div>
+    <div class="card" id="pools-current-card" style="display:none;">
+      <h2>Current Allocation</h2>
+      <div id="pools-current-wrap"></div>
+    </div>
   </div>
 
   <!-- SCHEDULE -->
@@ -142,6 +147,14 @@ a.link:hover{text-decoration:underline;}
         <div class="filter-field" style="flex:1;min-width:160px;">
           <label>Search team</label>
           <input id="sched-search" type="text" placeholder="Team name…">
+        </div>
+        <div class="filter-field">
+          <label>Phase</label>
+          <select id="sched-phase">
+            <option value="">All</option>
+            <option value="pool">Pool Play</option>
+            <option value="tiered">Post-League</option>
+          </select>
         </div>
         <div class="filter-field">
           <label>Court</label>
@@ -262,8 +275,11 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
 }
-document.querySelectorAll('.menu-card').forEach(btn => {
+document.querySelectorAll('.menu-card[data-view]').forEach(btn => {
   btn.addEventListener('click', () => showView(btn.dataset.view));
+});
+document.getElementById('menu-standings-btn').addEventListener('click', () => {
+  window.open('/standings.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
 });
 document.querySelectorAll('[data-back]').forEach(btn => {
   btn.addEventListener('click', () => showView('menu'));
@@ -285,6 +301,7 @@ async function loadAll() {
   renderMiniStatus();
   renderScheduleFilters();
   renderScheduleTable();
+  renderPoolsCurrent();
 }
 
 function renderFormat() {
@@ -335,9 +352,9 @@ function renderScheduleFilters() {
 
   const pools = [...new Set(SCHED.matches.map(m => m.group))].sort();
   const poolSel = document.getElementById('sched-pool');
-  poolSel.innerHTML = '<option value="">All pools</option>' + pools.map(p => `<option value="${p}">Pool ${p}</option>`).join('');
+  poolSel.innerHTML = '<option value="">All pools</option>' + pools.map(p => `<option value="${p}">${p}</option>`).join('');
 
-  const teamNames = [...new Set(SCHED.matches.flatMap(m => [m.teamAName, m.teamBName]))].sort();
+  const teamNames = [...new Set(SCHED.matches.flatMap(m => [m.teamAName, m.teamBName]).filter(Boolean))].sort();
   const refSel = document.getElementById('sched-ref-team');
   refSel.innerHTML = '<option value="">Any</option>' + teamNames.map(n => `<option value="${n}">${n}</option>`).join('');
 }
@@ -354,11 +371,13 @@ let refMode = 'any';
 function renderScheduleTable() {
   if (!SCHED || !SCHED.matches || !SCHED.matches.length) return;
   const search = document.getElementById('sched-search').value.trim().toLowerCase();
+  const phase = document.getElementById('sched-phase').value;
   const court  = document.getElementById('sched-court').value;
   const pool   = document.getElementById('sched-pool').value;
   const refTeam = document.getElementById('sched-ref-team').value;
 
   let rows = SCHED.matches.filter(m => {
+    if (phase && m.phase !== phase) return false;
     if (search) {
       const hay = (m.teamAName + ' ' + m.teamBName + ' ' + (m.refereeTeamName||'')).toLowerCase();
       if (!hay.includes(search)) return false;
@@ -380,14 +399,61 @@ function renderScheduleTable() {
     wrap.innerHTML = '<table><tbody><tr class="no-results"><td>No matches found for this filter.</td></tr></tbody></table>';
     return;
   }
-  wrap.innerHTML = '<table><thead><tr><th>Time</th><th>Court</th><th>Match</th><th>Teams</th><th>Referee</th></tr></thead><tbody>' +
-    rows.map(m => `<tr><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${m.label}</td><td>${m.teamAName} vs ${m.teamBName}</td><td><span class="pill ref">${m.refereeTeamName || '—'}</span></td></tr>`).join('') +
+  wrap.innerHTML = '<table><thead><tr><th>Time</th><th>Court</th><th>Match</th><th>Teams</th><th>Score</th><th>Referee</th><th></th></tr></thead><tbody>' +
+    rows.map(m => {
+      const teamsCell = (m.teamAId === null || m.teamBId === null)
+        ? '<span style="color:var(--muted);">TBD</span>'
+        : `${m.teamAName} vs ${m.teamBName}`;
+      const scoreCell = m.completed ? `${m.scoreA} – ${m.scoreB}` : '<span style="color:var(--muted);">—</span>';
+      const refCell = m.refereeTeamName ? `<span class="pill ref">${m.refereeTeamName}</span>` : '<span style="color:var(--muted);">—</span>';
+      const canScore = m.teamAId !== null && m.teamBId !== null;
+      const scoreBtn = canScore ? `<button class="btn small outline" data-score-match="${m.matchId}">${m.completed ? 'Edit' : 'Score'}</button>` : '';
+      return `<tr><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${m.label}</td><td>${teamsCell}</td><td>${scoreCell}</td><td>${refCell}</td><td>${scoreBtn}</td></tr>`;
+    }).join('') +
     '</tbody></table>';
+
+  wrap.querySelectorAll('[data-score-match]').forEach(btn => {
+    btn.addEventListener('click', () => enterScore(btn.dataset.scoreMatch));
+  });
 }
-['sched-search','sched-court','sched-pool','sched-ref-team'].forEach(id => {
+['sched-search','sched-phase','sched-court','sched-pool','sched-ref-team'].forEach(id => {
   document.getElementById(id).addEventListener('input', renderScheduleTable);
   document.getElementById(id).addEventListener('change', renderScheduleTable);
 });
+
+async function enterScore(matchId) {
+  const match = SCHED.matches.find(m => m.matchId === matchId);
+  if (!match) return;
+  const aStr = prompt(`${match.teamAName} score:`, match.scoreA !== null ? match.scoreA : '');
+  if (aStr === null) return;
+  const bStr = prompt(`${match.teamBName} score:`, match.scoreB !== null ? match.scoreB : '');
+  if (bStr === null) return;
+  const scoreA = parseInt(aStr, 10), scoreB = parseInt(bStr, 10);
+  if (isNaN(scoreA) || isNaN(scoreB)) { toast('Enter valid numbers.'); return; }
+
+  const res = await fetch('/api/tournament/schedule/score', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+    body: JSON.stringify({ matchId, scoreA, scoreB }),
+  });
+  const body = await res.json();
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  loadAll();
+}
+
+/* ── Pool allocation display ── */
+function renderPoolsCurrent() {
+  const card = document.getElementById('pools-current-card');
+  if (!SCHED || !SCHED.pools || !SCHED.pools.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const byPool = {};
+  SCHED.pools.forEach(p => { (byPool[p.pool] = byPool[p.pool] || []).push(p.teamName); });
+  const poolNames = Object.keys(byPool).sort();
+  document.getElementById('pools-current-wrap').innerHTML =
+    '<div class="stat-row">' +
+    poolNames.map(p => `<div class="stat"><b>Pool ${p}</b>${byPool[p].join('<br>')}</div>`).join('') +
+    '</div>';
+}
 
 /* ── Actions ── */
 async function randomizePools() {

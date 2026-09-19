@@ -6,7 +6,8 @@ const TournamentConfig = require('../models/TournamentConfig');
 const Schedule = require('../models/Schedule');
 const DraftState = require('../models/DraftState');
 const { isValidToken, OFFICIAL_DRAFT_ID } = require('../utils/tdAuth');
-const { buildPoolSkeleton, assignPoolsToSkeleton, assignReferees } = require('../utils/scheduleGen');
+const { buildPoolSkeleton, assignPoolsToSkeleton, assignReferees, buildTieredSkeleton } = require('../utils/scheduleGen');
+const { computePoolStandings, resolveTieredMatches } = require('../utils/standings');
 
 const TOURNAMENT_ID = 'fvl-major-oct-2026'; // one active tournament for now
 
@@ -155,10 +156,13 @@ router.post('/schedule/randomize-pools', requireTd, async (req, res) => {
       return res.status(400).json({ error: 'No tournament config set yet' });
     }
 
-    // Reuse the stored skeleton if one exists (keeps courts/times fixed
-    // across re-randomization); otherwise build it fresh from config.
-    const skeleton = (existing && existing.matches && existing.matches.length)
-      ? existing.matches
+    const existingPool   = existing ? existing.matches.filter((m) => m.phase === 'pool') : [];
+    const existingTiered = existing ? existing.matches.filter((m) => m.phase === 'tiered') : [];
+
+    // Reuse the stored pool skeleton if one exists (keeps courts/times
+    // fixed across re-randomization); otherwise build it fresh from config.
+    const poolSkeleton = existingPool.length
+      ? existingPool
       : buildPoolSkeleton({
           poolCount: cfg.poolCount,
           poolSize: cfg.poolSize,
@@ -167,12 +171,31 @@ router.post('/schedule/randomize-pools', requireTd, async (req, res) => {
           startHHMM: cfg.timeStart || '08:40',
         });
 
-    const { pools, matches: withTeams } = assignPoolsToSkeleton(skeleton, teams, cfg.poolCount);
-    const matches = assignReferees(withTeams, teams);
+    const { pools, matches: poolWithTeams } = assignPoolsToSkeleton(poolSkeleton, teams, cfg.poolCount);
+    const poolMatches = assignReferees(poolWithTeams, teams);
+
+    // Tiered skeleton: reuse the existing shape (courts/times never
+    // change), but reset every slot's resolution \u2014 whatever teams/scores
+    // were previously resolved into it depended on the OLD pool draw and
+    // are no longer valid now that pools have changed.
+    const tieredSkeleton = existingTiered.length
+      ? existingTiered
+      : buildTieredSkeleton({
+          tiers: cfg.tiers,
+          courts: cfg.courts,
+          matchMinutes: 25,
+          startHHMM: cfg.postLeagueStart || '14:10',
+        });
+    const tieredMatches = tieredSkeleton.map((m) => ({
+      ...m,
+      teamAId: null, teamBId: null, teamAName: '', teamBName: '',
+      refereeTeamId: null, refereeTeamName: '',
+      scoreA: null, scoreB: null, completed: false,
+    }));
 
     const doc = await Schedule.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { tournamentId: TOURNAMENT_ID, pools, matches, generatedAt: new Date() },
+      { tournamentId: TOURNAMENT_ID, pools, matches: poolMatches.concat(tieredMatches), generatedAt: new Date() },
       { upsert: true, new: true }
     );
 
@@ -195,6 +218,64 @@ router.patch('/schedule/lock-pools', requireTd, async (req, res) => {
     res.json({ ok: true, poolsLocked: doc.poolsLocked });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update pool lock' });
+  }
+});
+
+// Enter/update a score for any match (pool or tiered). Every submission
+// re-runs the full resolution pipeline: recompute pool standings -> fill
+// in any newly-resolvable tiered slots (semis from standings, 3rd/final
+// from semi results) -> assign referees for tiered matches that just
+// became resolved. Cheap given the total match count (~40), so simplest
+// to just redo the whole pass each time rather than track deltas.
+router.patch('/schedule/score', requireTd, async (req, res) => {
+  try {
+    const { matchId, scoreA, scoreB } = req.body || {};
+    if (!matchId || typeof scoreA !== 'number' || typeof scoreB !== 'number') {
+      return res.status(400).json({ error: 'matchId, scoreA, and scoreB (numbers) are required' });
+    }
+
+    const doc = await Schedule.findOne({ tournamentId: TOURNAMENT_ID });
+    if (!doc) return res.status(404).json({ error: 'No schedule yet' });
+
+    const match = doc.matches.find((m) => m.matchId === matchId);
+    if (!match) return res.status(404).json({ error: 'No such match: ' + matchId });
+
+    match.scoreA = scoreA;
+    match.scoreB = scoreB;
+    match.completed = true;
+
+    const plainMatches = doc.matches.map((m) => m.toObject());
+    const standings = computePoolStandings(doc.pools, plainMatches);
+    let resolved = resolveTieredMatches(plainMatches, standings);
+
+    const draft = await DraftState.findOne({ draftId: OFFICIAL_DRAFT_ID }).lean();
+    const teams = (draft && draft.data && draft.data.teams) ? draft.data.teams.map((t) => ({ teamId: t.id, name: t.name })) : [];
+    if (teams.length) {
+      resolved = assignReferees(resolved, teams, { onlyMissing: true });
+    }
+
+    doc.matches = resolved;
+    await doc.save();
+
+    res.json({ ok: true, standings });
+  } catch (err) {
+    console.error('PATCH /tournament/schedule/score error:', err);
+    res.status(500).json({ error: err.message || 'Failed to save score' });
+  }
+});
+
+// Standings: pool standings (computed from pool scores) + tiered bracket
+// progress. Same open-once-revealed-else-TD-only gate as everything else.
+router.get('/standings', requireRevealedOrTd, async (req, res) => {
+  try {
+    const doc = await Schedule.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+    if (!doc || !doc.matches.length) return res.json({ pools: {}, tiered: [] });
+
+    const standings = computePoolStandings(doc.pools, doc.matches);
+    const tiered = doc.matches.filter((m) => m.phase === 'tiered');
+    res.json({ pools: standings, tiered });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to compute standings' });
   }
 });
 
