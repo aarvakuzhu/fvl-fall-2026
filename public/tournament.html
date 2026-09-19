@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FVL \u2014 Tournament (TD)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap');
+:root{
+  --ink:#05080f;--surface:#0d1425;--surface2:#111d34;--surface3:#172240;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#eef2ff;--text2:#8fa0c0;--muted:#4a5a80;
+  --gold:#f0c040;--gold2:#ffd96a;
+  --cyan:#38d9f5;--danger:#f03050;--success:#22d68a;
+  --fd:'Bebas Neue',sans-serif;--fu:'Rajdhani',sans-serif;--fb:'DM Sans',sans-serif;
+  --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--ink);color:var(--text);font-family:var(--fb);min-height:100vh;padding:24px 16px 60px;}
+.wrap{max-width:920px;margin:0 auto;}
+h1{font-family:var(--fd);font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;color:var(--gold);}
+.eyebrow{font-family:var(--fu);font-size:0.72rem;letter-spacing:4px;text-transform:uppercase;color:var(--text2);margin-bottom:4px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:18px;}
+.card h2{font-family:var(--fu);font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:14px;}
+.stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px;}
+.stat{flex:1;min-width:130px;background:var(--surface2);border-left:3px solid var(--gold);border-radius:4px;padding:8px 12px;}
+.stat b{display:block;font-family:var(--fu);font-size:0.6rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:2px;}
+.status-line{font-family:var(--fu);font-size:0.9rem;line-height:2;color:var(--text2);}
+.status-line strong{color:var(--text);}
+.btn{font-family:var(--fu);font-weight:600;font-size:0.8rem;letter-spacing:1px;text-transform:uppercase;padding:10px 18px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);cursor:pointer;transition:all .15s;}
+.btn:hover{border-color:var(--gold);}
+.btn.gold{background:var(--gold);color:#241a02;border-color:var(--gold);}
+.btn.danger{background:transparent;color:var(--danger);border-color:var(--danger);}
+.btn.outline{background:transparent;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.hint{font-family:var(--fu);font-size:0.72rem;color:var(--muted);line-height:1.6;margin-top:10px;max-width:600px;}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-family:var(--fu);font-size:0.85rem;}
+th{text-align:left;padding:6px 8px;font-size:0.65rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);}
+td{padding:6px 8px;border-bottom:1px dashed var(--border);}
+.gate{max-width:340px;margin:80px auto;text-align:center;}
+.gate input{width:100%;padding:12px;margin-top:16px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--fu);font-size:1rem;text-align:center;}
+.gate .err{color:var(--danger);font-family:var(--fu);font-size:0.8rem;margin-top:10px;display:none;}
+.pill{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--fu);font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.pill.gold{background:rgba(240,192,64,0.15);color:var(--gold);}
+.pill.danger{background:rgba(240,48,80,0.15);color:var(--danger);}
+.pill.success{background:rgba(34,214,138,0.15);color:var(--success);}
+a.link{color:var(--cyan);text-decoration:none;}
+a.link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="eyebrow">Fowler Volleyball League</div>
+  <h1>Tournament</h1>
+  <p style="font-family:var(--fu);color:var(--text2);margin-top:8px;">Tournament Director access only</p>
+  <input id="gate-pw" type="password" placeholder="TD password" autocomplete="off">
+  <div class="btn-row" style="justify-content:center;">
+    <button class="btn gold" id="gate-btn" style="margin-top:12px;">Enter</button>
+  </div>
+  <div class="err" id="gate-err">Incorrect password.</div>
+</div>
+
+<div id="app" class="wrap" style="display:none;">
+  <div class="eyebrow">Fowler Volleyball League \u2014 TD Only</div>
+  <h1 id="tourney-name">Tournament</h1>
+
+  <div class="card" id="format-card">
+    <h2>Format</h2>
+    <div class="stat-row" id="format-stats"></div>
+    <div id="prizes-wrap"></div>
+    <div class="btn-row">
+      <button class="btn outline" id="view-flyer-btn">\uD83D\uDCCB View Flyer</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Status</h2>
+    <div class="status-line" id="status-line">Loading&hellip;</div>
+  </div>
+
+  <div class="card">
+    <h2>Pool Allocation</h2>
+    <p class="hint">Safe to run any time, even mid-auction \u2014 pulls current team names (captain-defaulted where not yet renamed) and only changes which team sits in which pool. Courts and times are fixed from the format above and never move. Lock once you're happy with the draw.</p>
+    <div class="btn-row">
+      <button class="btn gold" id="randomize-btn">\uD83C\uDFB2 Randomize Pool Allocation</button>
+      <button class="btn outline" id="lock-pools-btn">\uD83D\uDD12 Lock Pool Allocation</button>
+    </div>
+  </div>
+
+  <div class="card" id="schedule-card" style="display:none;">
+    <h2>Pool Schedule</h2>
+    <div id="schedule-table-wrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>Final Rosters</h2>
+    <p class="hint">A separate, later step \u2014 once the auction is fully complete. Snapshots final rosters for Scores/Standings. Has no effect on pool allocation or the schedule.</p>
+    <div class="btn-row">
+      <button class="btn danger" id="lock-rosters-btn">\uD83D\uDD12 Lock Final Rosters</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Reveal</h2>
+    <p class="hint">Everything on this page \u2014 flyer, format, schedule \u2014 is TD-only until you reveal it. Flip this when you're ready for captains/players to see it.</p>
+    <div class="btn-row">
+      <button class="btn outline" id="reveal-btn">\uD83D\uDC41 Reveal to Everyone</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let TD_TOKEN = null;
+
+function toast(msg) { alert(msg); } // simple page, no toast system of its own
+
+async function checkToken(token) {
+  if (!token) return false;
+  try {
+    const res = await fetch('/api/tournament/locked', { headers: { 'x-td-token': token } });
+    return res.ok;
+  } catch (e) { return false; }
+}
+
+async function boot() {
+  const params = new URLSearchParams(location.search);
+  const fromQuery = params.get('td');
+  const fromSession = sessionStorage.getItem('fvl_td_token');
+  const candidate = fromQuery || fromSession;
+
+  if (candidate && await checkToken(candidate)) {
+    TD_TOKEN = candidate;
+    try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadAll();
+    return;
+  }
+  document.getElementById('gate').style.display = '';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function submitGate() {
+  const pw = document.getElementById('gate-pw').value;
+  const errEl = document.getElementById('gate-err');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/td/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!res.ok) { errEl.style.display = 'block'; return; }
+    const body = await res.json();
+    TD_TOKEN = body.token;
+    try { sessionStorage.setItem('fvl_td_token', TD_TOKEN); } catch(e) {}
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadAll();
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server.';
+    errEl.style.display = 'block';
+  }
+}
+
+function fmtTime12(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = ((h + 11) % 12) + 1;
+  return h12 + ':' + String(m).padStart(2, '0') + ' ' + period;
+}
+
+async function loadAll() {
+  const headers = { 'x-td-token': TD_TOKEN };
+  const [cfgRes, lockedRes, schedRes] = await Promise.all([
+    fetch('/api/tournament/config', { headers }),
+    fetch('/api/tournament/locked', { headers }),
+    fetch('/api/tournament/schedule', { headers }),
+  ]);
+  const cfg    = await cfgRes.json();
+  const locked = await lockedRes.json();
+  const sched  = await schedRes.json();
+
+  renderFormat(cfg);
+  renderStatus(cfg, locked, sched);
+  renderSchedule(sched);
+}
+
+function renderFormat(cfg) {
+  if (!cfg) return;
+  document.getElementById('tourney-name').textContent = cfg.name || 'Tournament';
+  const stats = [
+    ['Date', cfg.date],
+    ['Venue', cfg.venue],
+    ['Courts', cfg.courts],
+    ['Teams', cfg.teamCount],
+    ['Pools', cfg.poolCount + ' \u00d7 ' + cfg.poolSize],
+    ['Tiers', (cfg.tiers || []).map(t => t.name).join(' / ')],
+  ];
+  document.getElementById('format-stats').innerHTML = stats.map(([label, val]) =>
+    `<div class="stat"><b>${label}</b>${val || '\u2014'}</div>`
+  ).join('');
+
+  const prizes = cfg.prizes || [];
+  if (prizes.length) {
+    document.getElementById('prizes-wrap').innerHTML =
+      '<table><thead><tr><th>Award</th><th>Tier</th><th>Type</th></tr></thead><tbody>' +
+      prizes.map(p => `<tr><td>${p.award}</td><td>${p.tier}</td><td>${p.type}</td></tr>`).join('') +
+      '</tbody></table>';
+  }
+}
+
+function renderStatus(cfg, locked, sched) {
+  const lines = [];
+  lines.push(sched.matches && sched.matches.length
+    ? (sched.poolsLocked ? '<span class="pill gold">Pools Locked</span>' : '<span class="pill">Pools Randomized</span>') + ' \u2014 ' + sched.matches.length + ' matches'
+    : '<span class="pill danger">Pools Not Randomized</span>');
+  lines.push(locked && locked.locked
+    ? '<span class="pill success">Rosters Locked</span> \u2014 ' + locked.teams.length + ' teams, ' + new Date(locked.lockedAt).toLocaleString()
+    : '<span class="pill danger">Rosters Not Locked</span>');
+  lines.push(cfg && cfg.revealed
+    ? '<span class="pill success">Revealed</span> \u2014 visible to everyone'
+    : '<span class="pill danger">Hidden</span> \u2014 TD only');
+  document.getElementById('status-line').innerHTML = lines.join('<br>');
+
+  const lockPoolsBtn = document.getElementById('lock-pools-btn');
+  lockPoolsBtn.textContent = (sched && sched.poolsLocked) ? '\uD83D\uDD13 Unlock Pool Allocation' : '\uD83D\uDD12 Lock Pool Allocation';
+
+  const revealBtn = document.getElementById('reveal-btn');
+  revealBtn.textContent = (cfg && cfg.revealed) ? '\uD83D\uDD12 Hide Again' : '\uD83D\uDC41 Reveal to Everyone';
+}
+
+function renderSchedule(sched) {
+  const card = document.getElementById('schedule-card');
+  if (!sched.matches || !sched.matches.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const rows = sched.matches.map(m =>
+    `<tr><td>${fmtTime12(m.timeStart)}</td><td>Court ${m.court}</td><td>${m.label}</td><td>${m.teamAName} vs ${m.teamBName}</td></tr>`
+  ).join('');
+  document.getElementById('schedule-table-wrap').innerHTML =
+    '<table><thead><tr><th>Time</th><th>Court</th><th>Match</th><th>Teams</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+async function randomizePools() {
+  if (!confirm('Randomly draw teams into pools? Courts/times are fixed and untouched \u2014 only team assignments change.')) return;
+  const res = await fetch('/api/tournament/schedule/randomize-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+  const body = await res.json();
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  loadAll();
+}
+
+async function toggleLockPools() {
+  const schedRes = await fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN } });
+  const sched = await schedRes.json();
+  if (!sched.matches || !sched.matches.length) { toast('Randomize pools first.'); return; }
+  const nextLocked = !sched.poolsLocked;
+  if (!confirm((nextLocked ? 'Lock' : 'Unlock') + ' pool allocation?')) return;
+  const res = await fetch('/api/tournament/schedule/lock-pools', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+    body: JSON.stringify({ locked: nextLocked }),
+  });
+  const body = await res.json();
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  loadAll();
+}
+
+async function lockRosters() {
+  if (!confirm('Snapshot current teams/rosters as final? This does not affect pool allocation or the schedule, and resetting the draft later will not affect this snapshot.')) return;
+  const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+  const body = await res.json();
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  toast('Locked ' + body.teams + ' teams.');
+  loadAll();
+}
+
+async function toggleReveal() {
+  const cfgRes = await fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN } });
+  const cfg = await cfgRes.json();
+  const nextRevealed = !(cfg && cfg.revealed);
+  if (!confirm((nextRevealed ? 'Reveal' : 'Hide') + ' the flyer/schedule/format to everyone?')) return;
+  const res = await fetch('/api/tournament/config/reveal', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+    body: JSON.stringify({ revealed: nextRevealed }),
+  });
+  const body = await res.json();
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  loadAll();
+}
+
+function viewFlyer() {
+  window.open('/flyer.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
+}
+
+document.getElementById('gate-btn').addEventListener('click', submitGate);
+document.getElementById('gate-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitGate(); });
+document.getElementById('randomize-btn').addEventListener('click', randomizePools);
+document.getElementById('lock-pools-btn').addEventListener('click', toggleLockPools);
+document.getElementById('lock-rosters-btn').addEventListener('click', lockRosters);
+document.getElementById('reveal-btn').addEventListener('click', toggleReveal);
+document.getElementById('view-flyer-btn').addEventListener('click', viewFlyer);
+
+boot();
+</script>
+</body>
+</html>

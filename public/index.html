@@ -837,6 +837,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     <button class="btn btn-outline btn-sm" id="btn-poster">🏆 Teams</button>
     <button class="btn btn-outline btn-sm" id="btn-export">⬇ Export CSV</button>
     <button class="btn btn-outline btn-sm" id="btn-admin" style="display:none;">⚙ Admin</button>
+    <button class="btn btn-outline btn-sm" id="btn-tournament-page" style="display:none;">🏟 Tournament</button>
     <button class="btn btn-danger btn-sm" id="btn-reset">⟳ Reset</button>
     <button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">🌙</button>
   </div>
@@ -1193,34 +1194,9 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
       <div id="admin-budget-log" style="margin-top:16px;font-family:var(--fu);font-size:0.75rem;color:var(--text2);line-height:1.8;max-height:220px;overflow-y:auto;"></div>
     </div>
 
-    <div class="rules-section">
-      <div class="rules-section-title">Tournament \u2014 Lock, Schedule &amp; Reveal</div>
-      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;max-width:560px;">
-        Randomize teams into pools any time \u2014 even mid-auction, since team names/captains exist from the start.
-        Lock the pool draw once it's final. Separately, once the auction fully wraps, lock the final rosters
-        (for Scores/Standings later). Nothing here is visible to anyone but the TD until you flip Reveal.
-      </p>
-
-      <div id="admin-tournament-status" style="font-family:var(--fu);font-size:0.8rem;color:var(--text2);line-height:2;margin-bottom:14px;">Loading&hellip;</div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button id="admin-randomize-pools-btn" class="btn btn-gold" style="padding:9px 18px;">\uD83C\uDFB2 Randomize Pool Allocation</button>
-        <button id="admin-lock-pools-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDD12 Lock Pool Allocation</button>
-        <button id="admin-view-flyer-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDCCB View Flyer</button>
-        <button id="admin-reveal-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDC41 Reveal to Everyone</button>
-      </div>
-      <p style="font-family:var(--fu);font-size:0.68rem;color:var(--muted);margin-top:10px;line-height:1.5;max-width:560px;">
-        Randomize can be run any time, even mid-auction \u2014 it only touches which team is in which pool. Court/time
-        assignments are fixed from tournament config and never change. Once you're happy with the draw, lock it so
-        it can't be accidentally re-randomized.
-      </p>
-      <p style="font-family:var(--fu);font-size:0.68rem;color:var(--muted);margin-top:10px;line-height:1.5;max-width:560px;">
-        Separately, once the auction is fully complete: lock the final rosters below \u2014 needed later for Scores/Standings, has no effect on the schedule above.
-      </p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-        <button id="admin-lock-teams-btn" class="btn btn-danger" style="padding:9px 18px;">\uD83D\uDD12 Lock Final Rosters</button>
-      </div>
-    </div>
+    <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);text-align:center;margin-top:6px;">
+      Pool allocation, schedule, flyer, and reveal have moved to the <strong style="color:var(--gold);">\uD83C\uDFDF Tournament</strong> page (button in the header).
+    </p>
 
   </div>
 </div>
@@ -4124,7 +4100,6 @@ function showAdmin() {
   document.body.style.overflow = 'hidden';
   loadAdminStats();
   renderAdminBudgetPanel();
-  loadAdminTournamentStatus();
 }
 
 function closeAdmin() {
@@ -4259,144 +4234,6 @@ function _doApplyBudgetAdjustment(teamId, amount, reason) {
   toast('✓ ' + (amount > 0 ? '+' : '\u2212') + fmt(Math.abs(amount)) + ' applied to ' + team.name + '.', 'success');
 }
 
-/* ── ADMIN: Tournament (lock / schedule / reveal) ── */
-
-async function loadAdminTournamentStatus() {
-  const el = document.getElementById('admin-tournament-status');
-  if (!el) return;
-  el.innerHTML = 'Loading&hellip;';
-  try {
-    const [lockedRes, cfgRes, schedRes] = await Promise.all([
-      fetch('/api/tournament/locked', { headers: { 'x-td-token': TD_TOKEN || '' } }),
-      fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN || '' } }),
-      fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN || '' } }),
-    ]);
-    const locked = await lockedRes.json();
-    const cfg    = await cfgRes.json();
-    const sched  = await schedRes.json();
-
-    const lockedLine = locked.locked
-      ? '\uD83D\uDD12 <strong style="color:var(--text);">Rosters locked</strong> \u2014 ' + locked.teams.length + ' teams, at ' + new Date(locked.lockedAt).toLocaleString()
-      : '\u26AA Rosters not locked yet';
-    const poolLine = (sched.matches && sched.matches.length)
-      ? (sched.poolsLocked ? '\uD83D\uDD12 <strong style="color:var(--text);">Pools locked</strong>' : '\uD83C\uDFB2 <strong style="color:var(--text);">Pools randomized</strong> (not locked)') + ' \u2014 ' + sched.matches.length + ' matches across ' + (cfg ? cfg.poolCount : '?') + ' pools'
-      : '\u26AA Pools not randomized yet';
-    const revealLine = cfg && cfg.revealed
-      ? '\uD83D\uDC41 <strong style="color:var(--success);">Revealed</strong> \u2014 visible to everyone'
-      : '\uD83D\uDD12 <strong style="color:var(--danger);">Hidden</strong> \u2014 TD only';
-
-    el.innerHTML = poolLine + '<br>' + lockedLine + '<br>' + revealLine;
-
-    const revealBtn = document.getElementById('admin-reveal-btn');
-    if (revealBtn) revealBtn.textContent = (cfg && cfg.revealed) ? '\uD83D\uDD12 Hide Again' : '\uD83D\uDC41 Reveal to Everyone';
-    const lockPoolsBtn = document.getElementById('admin-lock-pools-btn');
-    if (lockPoolsBtn) lockPoolsBtn.textContent = (sched && sched.poolsLocked) ? '\uD83D\uDD13 Unlock Pool Allocation' : '\uD83D\uDD12 Lock Pool Allocation';
-  } catch (e) {
-    el.textContent = 'Could not load tournament status.';
-  }
-}
-
-async function lockTeamsFromUI() {
-  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
-  openModal(
-    'Lock Final Rosters',
-    'This snapshots the current official draft\u2019s teams and rosters as final, for Scores/Standings to use later. Resetting the draft afterward will NOT affect this snapshot. Has no effect on pool allocation or the schedule. Re-locking later overwrites this snapshot. Continue?',
-    async function() {
-      try {
-        const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
-        const body = await res.json();
-        if (!res.ok) { toast('\u26A0 Lock failed: ' + (body.error || res.status), 'danger'); return; }
-        toast('\u2713 Locked ' + body.teams + ' teams.', 'success');
-        loadAdminTournamentStatus();
-      } catch (e) {
-        toast('\u26A0 Lock failed \u2014 check your connection.', 'danger');
-      }
-    }
-  );
-}
-
-async function randomizePoolsFromUI() {
-  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
-  openModal(
-    'Randomize Pool Allocation',
-    'Randomly draws the current teams (captain-defaulted names included) into pools. Courts and times are fixed and untouched \u2014 only which team sits in which pool changes. Safe to re-run any time before it\u2019s locked. Continue?',
-    async function() {
-      try {
-        const res = await fetch('/api/tournament/schedule/randomize-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
-        const body = await res.json();
-        if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
-        toast('\u2713 Pools randomized: ' + body.matches + ' matches.', 'success');
-        loadAdminTournamentStatus();
-      } catch (e) {
-        toast('\u26A0 Randomize failed \u2014 check your connection.', 'danger');
-      }
-    }
-  );
-}
-
-async function togglePoolLockFromUI() {
-  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
-  try {
-    const schedRes = await fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN } });
-    const sched = await schedRes.json();
-    if (!sched.matches || !sched.matches.length) { toast('Randomize pools first.', 'danger'); return; }
-    const nextLocked = !sched.poolsLocked;
-    const verb = nextLocked ? 'Lock' : 'Unlock';
-    openModal(
-      verb + ' Pool Allocation',
-      nextLocked
-        ? 'This freezes the current pool draw \u2014 Randomize will be blocked until you unlock it again. Continue?'
-        : 'This allows Randomize Pool Allocation to run again. Continue?',
-      async function() {
-        const res = await fetch('/api/tournament/schedule/lock-pools', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
-          body: JSON.stringify({ locked: nextLocked }),
-        });
-        const body = await res.json();
-        if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
-        toast(nextLocked ? '\uD83D\uDD12 Pool allocation locked.' : '\uD83D\uDD13 Pool allocation unlocked.', 'info');
-        loadAdminTournamentStatus();
-      }
-    );
-  } catch (e) {
-    toast('\u26A0 Could not check pool lock status.', 'danger');
-  }
-}
-
-function viewFlyerFromUI() {
-  window.open('/flyer.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
-}
-
-async function toggleRevealFromUI() {
-  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
-  try {
-    const cfgRes = await fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN } });
-    const cfg = await cfgRes.json();
-    const nextRevealed = !(cfg && cfg.revealed);
-    const verb = nextRevealed ? 'Reveal' : 'Hide';
-    openModal(
-      verb + ' Tournament',
-      nextRevealed
-        ? 'This makes the flyer, schedule, and standings visible to everyone \u2014 not just the TD. Continue?'
-        : 'This hides the tournament again \u2014 back to TD-only. Continue?',
-      async function() {
-        const res = await fetch('/api/tournament/config/reveal', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
-          body: JSON.stringify({ revealed: nextRevealed }),
-        });
-        const body = await res.json();
-        if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
-        toast(nextRevealed ? '\uD83D\uDC41 Revealed to everyone.' : '\uD83D\uDD12 Hidden again.', 'info');
-        loadAdminTournamentStatus();
-      }
-    );
-  } catch (e) {
-    toast('\u26A0 Could not check reveal status.', 'danger');
-  }
-}
-
 function exportCSV() {
   const rows = [['Team','Captain','Budget Remaining','Total Spent','Player','Tier','Price Paid']];
 
@@ -4515,6 +4352,9 @@ function attachEventListeners() {
   });
 
   document.getElementById('btn-admin').addEventListener('click', showAdmin);
+  document.getElementById('btn-tournament-page').addEventListener('click', function() {
+    window.open('/tournament.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
+  });
   document.getElementById('admin-close-btn').addEventListener('click', closeAdmin);
   document.getElementById('admin-overlay').addEventListener('click', function(e) {
     if (e.target === document.getElementById('admin-overlay')) closeAdmin();
@@ -4527,11 +4367,6 @@ function attachEventListeners() {
     );
   });
   document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
-  document.getElementById('admin-randomize-pools-btn').addEventListener('click', randomizePoolsFromUI);
-  document.getElementById('admin-lock-pools-btn').addEventListener('click', togglePoolLockFromUI);
-  document.getElementById('admin-lock-teams-btn').addEventListener('click', lockTeamsFromUI);
-  document.getElementById('admin-view-flyer-btn').addEventListener('click', viewFlyerFromUI);
-  document.getElementById('admin-reveal-btn').addEventListener('click', toggleRevealFromUI);
 
   // TD manual override controls
   var ovTeam   = document.getElementById('td-override-team');
@@ -4896,6 +4731,8 @@ function renderModeBanner() {
 
   const adminBtn = document.getElementById('btn-admin');
   if (adminBtn) adminBtn.style.display = IS_TD ? '' : 'none';
+  const tournamentBtn = document.getElementById('btn-tournament-page');
+  if (tournamentBtn) tournamentBtn.style.display = IS_TD ? '' : 'none';
 }
 
 /* \u2500\u2500 FIREWORKS ENGINE \u2500\u2500 */
