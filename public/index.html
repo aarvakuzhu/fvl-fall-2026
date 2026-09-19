@@ -1558,6 +1558,7 @@ function currentStatePayload() {
     history:   state.history,
     undoStack: state.undoStack,
     budgetLog: state.budgetLog,
+    auction:   state.auction,
     mockDraft: state.mockDraft,
     mockTimerSecs: state.mockTimerSecs,
   };
@@ -1636,10 +1637,14 @@ function applyRemoteState(s) {
     state.history   = Array.isArray(s.history)   ? s.history   : [];
     state.undoStack = Array.isArray(s.undoStack) ? s.undoStack : [];
     state.budgetLog = Array.isArray(s.budgetLog) ? s.budgetLog : [];
+    if (s.auction && typeof s.auction === 'object') {
+      state.auction = s.auction;
+    }
     if (typeof s.mockDraft     !== 'undefined') state.mockDraft     = s.mockDraft;
     if (typeof s.mockTimerSecs !== 'undefined') state.mockTimerSecs = s.mockTimerSecs;
     sortTeams();
     if (typeof renderAll === 'function') renderAll();
+    syncNonTdCountdown();
   } finally {
     applyingRemoteUpdate = false;
   }
@@ -1692,6 +1697,18 @@ async function loadState() {
   }
 }
 
+// Kicks off (or clears) a local, read-only countdown for non-TD viewers so
+// the timer actually ticks between synced updates instead of sitting
+// frozen \u2014 see the IS_TD guard in tickTimer(), which is what stops this
+// from ever finalizing the auction on a viewer's own client.
+function syncNonTdCountdown() {
+  if (IS_TD) return;
+  clearInterval(timerInterval);
+  if (state.auction && state.auction.active && state.auction.timerStarted && !state.auction.paused && state.auction.timerValue > 0) {
+    timerInterval = setInterval(tickTimer, 1000);
+  }
+}
+
 function applyStateBlob(s) {
   if (!s) return false;
   if (!Array.isArray(s.players) || s.players.length === 0) return false;
@@ -1704,9 +1721,13 @@ function applyStateBlob(s) {
   state.history   = Array.isArray(s.history)   ? s.history   : [];
   state.undoStack = Array.isArray(s.undoStack) ? s.undoStack : [];
   state.budgetLog = Array.isArray(s.budgetLog) ? s.budgetLog : [];
+  if (s.auction && typeof s.auction === 'object') {
+    state.auction = s.auction;
+  }
   sortTeams();
   if (typeof s.mockDraft     !== 'undefined') state.mockDraft     = s.mockDraft;
   if (typeof s.mockTimerSecs !== 'undefined') state.mockTimerSecs = s.mockTimerSecs;
+  syncNonTdCountdown();
   return true;
 }
 
@@ -2906,7 +2927,11 @@ function tickTimer() {
 
   if (state.auction.timerValue <= 0) {
     clearInterval(timerInterval);
-    finalizeAuction();
+    // Only the TD's own client ever finalizes an auction. A spectator (or
+    // any other non-TD viewer) running this same local countdown just lets
+    // the display hit 0 and wait \u2014 the real result arrives via the
+    // normal state sync once the TD's client finalizes it.
+    if (IS_TD) finalizeAuction();
   }
 }
 
