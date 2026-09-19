@@ -121,6 +121,21 @@ a.link:hover{text-decoration:underline;}
 .ref-toggle{display:flex;border-radius:5px;overflow:hidden;border:1px solid var(--border2);}
 .ref-toggle button{font-family:var(--fu);font-size:0.7rem;padding:7px 12px;background:var(--surface2);color:var(--text2);border:none;cursor:pointer;}
 .ref-toggle button.active{background:var(--gold);color:#241a02;}
+
+/* Format diagram */
+.diagram-stage-label{font-family:var(--fu);font-size:0.66rem;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;}
+.diagram-row{display:flex;gap:10px;flex-wrap:wrap;}
+.pool-box{flex:1;min-width:100px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px;text-align:center;}
+.pool-box .dname{font-family:var(--fd);font-size:1.4rem;color:var(--gold);letter-spacing:1px;line-height:1;}
+.pool-box .dmeta{font-family:var(--fu);font-size:0.6rem;color:var(--text2);margin-top:3px;}
+.diagram-arrow{text-align:center;font-family:var(--fu);font-size:0.68rem;color:var(--text2);padding:12px 0;letter-spacing:0.5px;}
+.diagram-arrow .big{font-size:1.5rem;color:var(--gold);display:block;line-height:1;}
+.tier-box{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--gold);border-radius:6px;padding:10px 12px;}
+.tier-box .dname{font-family:var(--fd);font-size:1.4rem;color:var(--gold);letter-spacing:1px;line-height:1;}
+.tier-box .dmeta{font-family:var(--fu);font-size:0.6rem;color:var(--text2);margin:3px 0 8px;}
+.mini-round{font-family:var(--fu);font-size:0.66rem;color:var(--text);padding:3px 0;border-top:1px dashed var(--border);}
+.mini-round:first-of-type{border-top:none;}
+.mini-round b{color:var(--cyan);font-weight:700;}
 </style>
 </head>
 <body>
@@ -165,6 +180,10 @@ a.link:hover{text-decoration:underline;}
       <div class="btn-row">
         <button class="btn outline" id="view-flyer-btn">📋 View Flyer</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>How It Works</h2>
+      <div id="format-diagram"></div>
     </div>
   </div>
 
@@ -372,6 +391,44 @@ function renderFormat() {
       prizes.map(p => `<tr><td>${p.award}</td><td>${p.tier}</td><td>${p.type}</td></tr>`).join('') +
       '</tbody></table>';
   }
+
+  renderFormatDiagram();
+}
+
+// Entirely driven by CFG \u2014 pool count/size and the tiers list \u2014 so this
+// stays correct for a future tournament with a different shape, not just
+// this one. Shows the two stages (pool play -> tiered bracket) and, per
+// tier, exactly which pool ranks feed each semifinal and how 3rd/Final
+// are decided \u2014 concrete rules rather than an abstract bracket icon.
+function renderFormatDiagram() {
+  const el = document.getElementById('format-diagram');
+  if (!CFG || !CFG.poolCount) { el.innerHTML = '<p class="hint">No format set yet.</p>'; return; }
+
+  const poolNames = Array.from({ length: CFG.poolCount }, (_, i) => String.fromCharCode(65 + i));
+  const poolsHtml = poolNames.map(p =>
+    `<div class="pool-box"><div class="dname">Pool ${p}</div><div class="dmeta">${CFG.poolSize} teams &middot; round robin<br>${CFG.poolGamesPerTeam || CFG.poolSize - 1} games each</div></div>`
+  ).join('');
+
+  const tiers = (CFG.tiers || []).slice().sort((a, b) => a.order - b.order);
+  const tiersHtml = tiers.map(t => {
+    const rank = t.order + 1;
+    const ord = rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : rank + 'th';
+    return `<div class="tier-box">
+      <div class="dname">${t.name}</div>
+      <div class="dmeta">Every ${ord}-place pool finisher</div>
+      <div class="mini-round"><b>SF1</b> Pool A ${ord} vs Pool B ${ord}</div>
+      <div class="mini-round"><b>SF2</b> Pool C ${ord} vs Pool D ${ord}</div>
+      <div class="mini-round"><b>3rd</b> SF losers</div>
+      <div class="mini-round"><b>Final</b> SF winners</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML =
+    '<div class="diagram-stage-label">Stage 1 &mdash; Pool Play</div>' +
+    '<div class="diagram-row">' + poolsHtml + '</div>' +
+    '<div class="diagram-arrow"><span class="big">\u2193</span>Each team\u2019s pool finish (1st\u20134th) decides which tier they play in next</div>' +
+    '<div class="diagram-stage-label">Stage 2 &mdash; Tiered Bracket</div>' +
+    '<div class="diagram-row">' + tiersHtml + '</div>';
 }
 
 function renderMiniStatus() {
