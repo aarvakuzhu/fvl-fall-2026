@@ -943,7 +943,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
             </div>
 
             <!-- RIGHT: player photo -->
-            <div id="auction-player-photo" style="display:none;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <div id="auction-player-photo" style="display:none;flex-shrink:0;flex-direction:column;align-items:center;gap:8px;">
               <img id="auction-player-img" src="" alt=""
                 style="width:220px;height:260px;object-fit:cover;object-position:top;border-radius:12px;border:3px solid var(--gold);box-shadow:0 0 30px rgba(240,192,64,0.5);">
               <div id="auction-player-skills" style="display:none;width:220px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--fu);font-size:1rem;color:#c0d8c8;text-align:center;line-height:1.6;letter-spacing:0.5px;"></div>
@@ -2149,9 +2149,20 @@ function renderAuctionBlock() {
   var photoWrap = document.getElementById('auction-player-photo');
   var photoImg  = document.getElementById('auction-player-img');
   if (photoWrap && photoImg) {
+    // Clear immediately so the PREVIOUS player's photo can't linger
+    // on-screen (or a broken-image icon show) while the new one loads \u2014
+    // photoWrap used to have display declared twice in its inline style
+    // (display:none then display:flex), so the browser used the last one
+    // and the box was actually visible by default the whole time,
+    // regardless of whether a photo had loaded.
+    photoWrap.style.display = 'none';
+    photoImg.onerror = null;
+    photoImg.onload  = null;
+    photoImg.removeAttribute('src');
+
     if (player.pic) {
       photoImg.onerror = function() { photoWrap.style.display = 'none'; };
-      photoImg.onload  = function() { photoWrap.style.display = ''; photoImg.onerror = null; };
+      photoImg.onload  = function() { photoWrap.style.display = 'flex'; photoImg.onerror = null; };
       photoImg.src = player.pic;
     } else {
       // fallback: try local images/players/<name>.<ext>
@@ -2160,7 +2171,7 @@ function renderAuctionBlock() {
         if (i >= exts.length) { photoWrap.style.display = 'none'; return; }
         var src = 'images/players/' + player.name + '.' + exts[i];
         photoImg.onerror = function() { tryExt(i + 1); };
-        photoImg.onload  = function() { photoWrap.style.display = ''; photoImg.onerror = null; };
+        photoImg.onload  = function() { photoWrap.style.display = 'flex'; photoImg.onerror = null; };
         photoImg.src = src;
       }
       tryExt(0);
