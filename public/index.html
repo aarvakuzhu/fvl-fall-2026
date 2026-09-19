@@ -677,6 +677,15 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .poster-budget-bar-wrap{height:3px;background:rgba(var(--fg-rgb),0.06);border-radius:2px;margin:0 14px 0}
 .poster-budget-bar{height:3px;border-radius:2px;transition:width 0.4s}
 @media print{
+  /* The page's own background (body{background:var(--ink)}) is dark-theme
+     by default and would otherwise print solid black behind any overlay
+     content when "print background graphics" is on (Chrome's default) \u2014
+     overriding html/body here, not just the overlay itself, is what
+     actually fixes that regardless of which overlay is being printed. */
+  html,body{background:#fff!important}
+}
+
+@media print{
   #poster-overlay{position:static!important;background:#fff!important;overflow:visible!important}
   body>*:not(#poster-overlay){display:none!important}
   .poster-card{break-inside:avoid;border:1px solid #ccc!important}
@@ -1344,11 +1353,10 @@ function captainCost(tier) {
   return Math.floor(raw / 50) * 50; // rounded DOWN to the nearest $50 — same increment every bid uses, and keeps every captain cost reachable on the live-bidding ladder too
 }
 
-// Mandi and Biryani share one combined "premium tier" cap per team — a
-// team with a Mandi captain (or Mandi pick) can't also win a Biryani
-// player, and vice versa. Purely visual/styling checks (which glow, which
-// banner) stay tier === 'Biryani' / 'Mandi' specific elsewhere; this is
-// only for the roster-limit rule.
+// Mandi and Biryani are tracked together as "premium tier" for informational
+// purposes (e.g. team.premiumCount) — there is NO cap on how many a team
+// can draft; this used to enforce a combined max-1-per-team limit, removed
+// by design decision so budget/reserve math is the only real constraint.
 function isPremiumTier(tier) { return tier === 'Mandi' || tier === 'Biryani'; }
 
 // Fetches the roster (captains + players) from MongoDB via the API and
@@ -1730,8 +1738,6 @@ function minBidForTeam(teamId) {
   const player = getPlayer(state.auction.playerId);
 
   if (teamAuctionSlotsLeft(team) <= 0) return null;
-
-  if (isPremiumTier(player.tier) && team.premiumCount >= 1) return null;
 
   const next = (state.auction.leadingTeamId === null)
     ? player.currentBase
@@ -2203,7 +2209,6 @@ function renderAuctionBlock() {
     let disabledReason = '';
     let disabledColor  = '';
     if (teamAuctionSlotsLeft(team) <= 0)                               { disabledReason = 'Roster full';          disabledColor = '#8fa0c0'; }
-    else if (isPremiumTier(player.tier) && team.premiumCount >= 1)     { disabledReason = '🚫 Mandi/Biryani limit'; disabledColor = '#ff4060'; }
     else if (isLeading)                                                 { disabledReason = 'Leading';              disabledColor = '';        }
     else if (nextBid === null)                                          { disabledReason = '⛔ Over budget';       disabledColor = '#ff4060'; }
 
@@ -2285,13 +2290,7 @@ function updateOverrideSliderBounds() {
 function updateOverrideBiryaniWarning(player) {
   const warnEl = document.getElementById('td-override-warning');
   if (!warnEl) return;
-  const team = selectedOverrideTeam();
-  if (team && isPremiumTier(player.tier) && team.premiumCount >= 1) {
-    warnEl.textContent = '⚠ ' + team.name + ' already has a Mandi/Biryani player — awarding breaks the 1-per-team cap.';
-    warnEl.style.display = '';
-  } else {
-    warnEl.style.display = 'none';
-  }
+  warnEl.style.display = 'none'; // no Mandi/Biryani cap anymore \u2014 nothing to warn about here
 }
 
 function submitTdOverrideAward() {
@@ -2310,14 +2309,9 @@ function submitTdOverrideAward() {
   if (teamAuctionSlotsLeft(team) <= 0) { toast(team.name + ' has a full roster.', 'danger'); return; }
   if (price > team.budget) { toast('Exceeds ' + team.name + '\u2019s remaining budget (' + fmt(team.budget) + ').', 'danger'); return; }
 
-  let warn = '';
-  if (isPremiumTier(player.tier) && team.premiumCount >= 1) {
-    warn = team.name + ' already has a Mandi/Biryani player \u2014 this breaks the 1-per-team cap. ';
-  }
-
   openModal(
     'Confirm Override',
-    warn + 'Award ' + player.name + ' to ' + team.name + ' for ' + fmt(price) + '?',
+    'Award ' + player.name + ' to ' + team.name + ' for ' + fmt(price) + '?',
     function() {
       clearInterval(timerInterval);
       state.auction.leadingTeamId = team.id;
@@ -2532,7 +2526,6 @@ function nominatePlayer(playerId, isManual = false) {
 
   const canAfford = state.teams.some(t => {
     if (teamAuctionSlotsLeft(t) <= 0) return false;
-    if (isPremiumTier(player.tier) && t.premiumCount >= 1) return false;
     const spotsAfter = teamAuctionSlotsLeft(t) - 1;
     const reserve    = RESERVE_MIN(spotsAfter);
     return player.currentBase + reserve <= t.budget;
@@ -2589,7 +2582,6 @@ function renderTiebreakerPanel() {
   // All teams that CAN afford this tier's max bid and aren't roster-full or Biryani blocked
   var eligibleTeams = state.teams.filter(function(t) {
     if (teamAuctionSlotsLeft(t) <= 0) return false;
-    if (isPremiumTier(player.tier) && t.premiumCount >= 1) return false;
     var spotsAfter = teamAuctionSlotsLeft(t) - 1;
     var reserve    = RESERVE_MIN(spotsAfter);
     return maxBidForTier(player.tier) + reserve <= t.budget;
@@ -3714,7 +3706,7 @@ function showRules() {
       
       '<td style="color:#fff;font-weight:700;">'+t.count+' players</td>' +
       '<td style="color:'+t.color+';font-weight:700;">$'+t.base+' base</td>' +
-      '<td style="color:var(--muted);">'+((code==='Biryani'||code==='Mandi')?'Max 1 (Mandi+Biryani combined)':'Unlimited')+'</td>' +
+      '<td style="color:var(--muted);">Unlimited</td>' +
     '</tr>';
   }).join('');
 
@@ -3756,9 +3748,6 @@ function showRules() {
         '</tr></thead>',
         '<tbody>'+tierTableRows+'</tbody>',
       '</table>',
-      '<p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-top:10px;padding:10px 14px;background:rgba(240,192,64,0.05);border-radius:6px;border-left:3px solid rgba(240,192,64,0.3);">',
-        '\u26a0\ufe0f <strong style="color:var(--gold);">Mandi/Biryani limit:</strong> Each team may draft <strong style="color:#fff;">at most 1 combined Mandi + Biryani player</strong> across the entire draft \u2014 they share one cap, not one each. Attempting a second will be blocked.',
-      '</p>',
     '</div>',
 
     // ── Draft Rounds ─────────────────────────────────────────
@@ -3797,7 +3786,7 @@ function showRules() {
         '<li><strong>Mark Unsold:</strong> The nominating captain can declare a player unsold (if no bids yet). The player is queued for Fire Sale at a reduced price.',
         '</li>',
         '<li class="teal"><strong>TD Manual Override:</strong> When logged in as Tournament Director, a player on the block can be assigned directly to any team at any price, skipping live bidding entirely \u2014 for when time is short and the auction needs to move fast.',
-          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed the max bid ($2,000) \u2014 same cap as live bidding. NOT checked: the Mandi/Biryani cap \u2014 a warning shows, but the TD can override it.</span>',
+          '<span class="ex">Still checked: the team must have an open roster slot, enough remaining budget, and the price can\'t exceed the max bid ($2,000) \u2014 same cap as live bidding.</span>',
         '</li>',
       '</ul>',
     '</div>',
@@ -3858,9 +3847,6 @@ function showRules() {
           '<span class="ex">Example: A Biryani-tier captain ($800 base) costs $800 + 25% = <strong style="color:var(--gold);">$1,000</strong>, taken off the top of that team\'s budget. A Chai-tier captain ($450 base) costs $450 + 25% = $562.50, rounded <strong>down</strong> to the nearest $50 \u2014 <strong>$550</strong>. A Mandi-tier captain ($1,000 base) costs $1,000 + 25% = <strong style="color:#ff2e6b;">$1,250</strong>.</span>',
         '</li>',
         '<li><strong>Each team drafts 5 players</strong> (1 captain + 5 = 6 total on your roster).',
-        '</li>',
-        '<li class="gold"><strong>Mandi + Biryani cap:</strong> Maximum <strong>1 combined Mandi/Biryani player per team</strong> \u2014 they share one cap, not one each. Counts a Mandi- or Biryani-tier captain if you have one. If your captain is Mandi or Biryani tier, or you\'ve already drafted a Mandi or Biryani player, you are blocked from bidding on any player in either tier.',
-          '<span class="ex">Example: Team already drafted Adit Timbadia (Biryani). They are now locked out of all other Biryani auctions.</span>',
         '</li>',
         '<li><strong>Roster full:</strong> Once you have 5 drafted picks, your bid buttons are disabled for all remaining players.',
         '</li>',
