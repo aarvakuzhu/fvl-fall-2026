@@ -939,10 +939,10 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
                   </div>
                   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;">
                     <select id="td-override-team" class="gate-input" style="max-width:230px;flex:1;min-width:160px;"></select>
-                    <input id="td-override-price-num" type="number" class="gate-input" style="max-width:110px;" step="25" min="0" inputmode="numeric">
+                    <input id="td-override-price-num" type="number" class="gate-input" style="max-width:110px;" step="50" min="0" inputmode="numeric">
                     <button class="btn btn-gold" id="td-override-award-btn" style="padding:8px 22px;white-space:nowrap;">Award</button>
                   </div>
-                  <input id="td-override-price-slider" type="range" style="width:100%;margin-top:10px;accent-color:var(--gold);" min="0" max="2000" step="25" value="0">
+                  <input id="td-override-price-slider" type="range" style="width:100%;margin-top:10px;accent-color:var(--gold);" min="0" max="2000" step="50" value="0">
                   <div id="td-override-warning" style="display:none;text-align:center;font-size:0.7rem;color:var(--danger);margin-top:6px;"></div>
                 </div>
               </div>
@@ -1285,7 +1285,7 @@ let CAPTAIN_NUMBERS = {};
 let PLAYER_LIST      = [];
 
 const ROSTER_SIZE   = 6;
-const MIN_BID_INC   = 25;
+const MIN_BID_INC   = 50;
 const TIMER_SECS_LIVE = 30;
 function TIMER_SECS() { try { return (state && state.mockDraft) ? (typeof state.mockTimerSecs === 'number' ? state.mockTimerSecs : 1) : TIMER_SECS_LIVE; } catch(e) { return TIMER_SECS_LIVE; } }
 // Static reserve floor per remaining roster slot \u2014 not recalculated live,
@@ -2772,8 +2772,14 @@ function placeBid(teamId) {
   state.auction.currentBid    = nextBid;
   state.auction.leadingTeamId = teamId;
 
-  // Check if we just hit this tier's max bid \u2014 enter tiebreaker mode
-  if (nextBid >= maxBidForTier(getPlayer(state.auction.playerId).tier)) {
+  // Enter tiebreaker once the NEXT possible increment would exceed this
+  // tier's max bid \u2014 not just when the current bid happens to land
+  // exactly on the cap. Some tier base prices don't divide evenly into
+  // MIN_BID_INC steps up to the cap (e.g. Chai $475 base with a $50
+  // increment plateaus at $1,975, never exactly $2,000), so checking
+  // "would the next step exceed the cap" is the only way that's correct
+  // for every tier regardless of that parity.
+  if (nextBid + MIN_BID_INC > maxBidForTier(getPlayer(state.auction.playerId).tier)) {
     clearInterval(timerInterval);
     state.auction.tiebreaker  = true;
     state.auction.tiedTeamIds = [teamId]; // first team in tie
@@ -3731,7 +3737,7 @@ function showRules() {
         '</div>',
         '<div class="rules-card">',
           '<div class="rules-card-label">Bid Increment</div>',
-          '<div class="rules-card-value">$25</div>',
+          '<div class="rules-card-value">$50</div>',
           '<div class="rules-card-sub">Minimum raise per bid</div>',
         '</div>',
         '<div class="rules-card">',
@@ -3780,7 +3786,7 @@ function showRules() {
         '<li><strong>Opening bid:</strong> Any eligible team places the first bid at the player\'s base price.',
           '<span class="ex">Example: Chai player has a $475 base &mdash; first bid is $475.</span>',
         '</li>',
-        '<li><strong>Raise bid:</strong> Must raise by exactly <strong>$25</strong> over the current highest bid.',
+        '<li><strong>Raise bid:</strong> Must raise by exactly <strong>$50</strong> over the current highest bid.',
           '<span class="ex">Current bid $500 \u2192 next bid must be $525. You cannot bid $510 or $530.</span>',
         '</li>',
         '<li><strong>Timer:</strong> Each bid resets a 15-second countdown. If time expires with no new bid, the current leader wins the player.',
@@ -3805,10 +3811,10 @@ function showRules() {
           '<span class="ex">Example: A Biryani-tier captain costs $1,000 (see Rosters &amp; Captains below), leaving $3,500. Spend $650 on a Samosa and $475 on a Chai &mdash; $2,375 left for 3 more picks.</span>',
         '</li>',
         '<li class="warn"><strong>Reserve requirement:</strong> You cannot bid if doing so would leave you unable to afford your remaining open roster slots at minimum base prices.',
-          '<span class="ex">With 3 slots left and $1,300 budget: reserve needed = $1,275 (2 Chai + 1 Biscuit). Max bid = $1,300 \u2212 $1,275 = $25.</span>',
+          '<span class="ex">With 3 slots left and $1,300 budget: reserve needed = $1,275 (2 Chai + 1 Biscuit). Only $25 of headroom \u2014 since the minimum raise is $50, this team cannot bid at all right now.</span>',
         '</li>',
         '<li class="warn"><strong>Over-budget protection:</strong> The system automatically disables your bid button when any bid would breach your reserve floor. You will see "Over budget" on your team\'s bid control.',
-          '<span class="ex">Example: Budget = $1,300, 2 slots remaining, reserve = $800 (1 Chai + 1 Biscuit). Max bid you can place = $1,300 \u2212 $800 = $500. A $525 bid would be blocked.</span>',
+          '<span class="ex">Example: Budget = $1,300, 2 slots remaining, reserve = $800 (1 Chai + 1 Biscuit). Max bid you can place = $1,300 \u2212 $800 = $500. A $550 bid (the next $50 step) would be blocked.</span>',
         '</li>',
         '<li class="teal"><strong>Budget warning:</strong> Your sidebar shows a red warning when your remaining budget is running low relative to your open slots.',
         '</li>',
