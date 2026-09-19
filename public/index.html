@@ -697,16 +697,44 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
      separate document \u2014 the content only depends on 3 CSS variables
      (--gold, --muted, --fg-rgb via rules-card/rules-list backgrounds) plus
      two hardcoded #fff text colors, so redefining those for print is
-     enough to make it legible on paper without duplicating any text. */
+     enough to make it legible on paper without duplicating any text.
+     Sizing/spacing below is deliberately aggressive \u2014 there's a lot of
+     rules text, and the whole thing needs to fit in 2 pages. */
+  @page{size:A4;margin:9mm}
   #rules-overlay{
     position:static!important;background:#fff!important;overflow:visible!important;
     --gold:#8a6d00;--muted:#555;--text:#111;--fg-rgb:10,14,30;
+    font-size:8.5px!important;
   }
   body>*:not(#rules-overlay){display:none!important}
   #rules-print-btn,#rules-close-btn,#theme-toggle{display:none!important}
   #rules-overlay .rules-card-value,#rules-overlay .rules-list li strong{color:#111!important}
   #rules-overlay .ex{color:#445!important}
-  #rules-overlay .rules-section{break-inside:avoid}
+  #rules-overlay .rules-section{break-inside:avoid;margin-bottom:8px!important}
+  #rules-overlay .rules-section-title{font-size:0.62rem!important;letter-spacing:3px!important;margin-bottom:5px!important;padding-bottom:3px!important}
+  #rules-overlay .rules-section-title::before{width:2px!important;height:9px!important}
+  /* Overview cards: shrink the grid so it never spans more than the row it needs */
+  #rules-overlay .rules-card{padding:5px 7px!important;border-radius:4px!important}
+  #rules-overlay .rules-card-value{font-size:0.95rem!important}
+  #rules-overlay .rules-card-label{font-size:0.5rem!important;letter-spacing:1.5px!important;margin-bottom:1px!important}
+  #rules-overlay .rules-card-sub{font-size:0.55rem!important;margin-top:1px!important}
+  /* Rule lists: 2-column flow \u2014 short items, no reason to use only one
+     column's worth of page width */
+  #rules-overlay .rules-list{display:block!important;columns:2!important;column-gap:10px!important}
+  #rules-overlay .rules-list li{
+    display:inline-block!important;width:100%!important;break-inside:avoid;
+    font-size:0.62rem!important;line-height:1.25!important;
+    padding:3px 6px!important;margin-bottom:4px!important;border-radius:0 3px 3px 0!important;
+  }
+  #rules-overlay .rules-list li .ex{font-size:0.55rem!important;padding:2px 5px!important;margin-top:2px!important;line-height:1.2!important}
+  /* Tier grid table: compact rows */
+  #rules-overlay .rules-tier-table{font-size:0.6rem!important}
+  #rules-overlay .rules-tier-table th{font-size:0.48rem!important;padding:2px 6px!important;letter-spacing:1px!important}
+  #rules-overlay .rules-tier-table td{padding:2px 6px!important}
+  #rules-wrapper{max-width:100%!important;padding:0!important}
+  #rules-header-row{margin-bottom:8px!important}
+  #rules-header-title{font-size:1.2rem!important;letter-spacing:2px!important}
+  #rules-overlay .rules-grid{gap:5px!important;margin-bottom:6px!important}
 }
 
 /* ── RESPONSIVE ─────────────────────────────────── */
@@ -1138,13 +1166,13 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
      DRAFT RULES OVERLAY
 ════════════════════════════════════════════════════ -->
 <div id="rules-overlay" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(var(--ink-rgb),0.96);overflow-y:auto;">
-  <div style="max-width:860px;margin:0 auto;padding:32px 24px 56px;">
+  <div id="rules-wrapper" style="max-width:860px;margin:0 auto;padding:32px 24px 56px;">
 
     <!-- Header -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;gap:16px;">
+    <div id="rules-header-row" style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;gap:16px;">
       <div>
         <div style="font-family:var(--fd);font-size:0.65rem;letter-spacing:8px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Fowler Volleyball League</div>
-        <div style="font-family:var(--fd);font-size:2.4rem;letter-spacing:4px;color:var(--gold);line-height:1;">DRAFT RULES</div>
+        <div id="rules-header-title" style="font-family:var(--fd);font-size:2.4rem;letter-spacing:4px;color:var(--gold);line-height:1;">DRAFT RULES</div>
         <div style="font-family:var(--fd);font-size:0.75rem;letter-spacing:3px;color:var(--muted);margin-top:6px;">Fall 2026 Season</div>
         <div style="width:80px;height:2px;background:linear-gradient(90deg,var(--gold),transparent);margin-top:12px;"></div>
       </div>
@@ -3228,20 +3256,15 @@ function printRosterList() {
   function playerRow(p, idx) {
     var skills  = p.skills  || '';
     var remarks = p.remarks || '';
-    var photo   = p.pic
-      ? '<img src="' + p.pic + '" style="width:36px;height:36px;object-fit:cover;object-position:top;border-radius:4px;border:1px solid #ddd;display:block;">'
-      : '<div style="width:36px;height:36px;border-radius:4px;border:1px solid #e0e0e0;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">🏐</div>';
     var rowBg   = idx % 2 === 0 ? '' : 'background:#fafafa;';
     var notesLines = [
       skills  ? '<span style="color:#444;">' + skills + '</span>'  : '',
       remarks ? '<span style="color:#888;font-style:italic;">' + remarks + '</span>' : '',
-    ].filter(Boolean).join('<br>');
+    ].filter(Boolean).join(' &middot; ');
     return '<tr style="' + rowBg + 'border-bottom:1px solid #eee;">' +
-      '<td style="padding:5px 6px;vertical-align:middle;width:42px;">' + photo + '</td>' +
-      '<td style="padding:5px 8px;vertical-align:middle;font-weight:600;font-size:0.78rem;min-width:130px;">' + p.name + '</td>' +
-      '<td style="padding:5px 8px;vertical-align:middle;font-size:0.72rem;color:#555;line-height:1.4;">' + notesLines + '</td>' +
-      '<td style="padding:5px 8px;vertical-align:middle;font-size:0.72rem;color:#666;white-space:nowrap;text-align:right;">$' + (p.currentBase||p.base||0) + '</td>' +
-      '<td style="padding:5px 8px;vertical-align:middle;width:80px;border-left:1px solid #e8e8e8;"><div style="height:18px;border-bottom:1px solid #ccc;margin-bottom:3px;"></div><div style="height:18px;border-bottom:1px solid #ccc;"></div></td>' +
+      '<td style="padding:2px 6px;vertical-align:middle;font-weight:600;font-size:0.68rem;min-width:110px;">' + p.name + '</td>' +
+      '<td style="padding:2px 6px;vertical-align:middle;font-size:0.6rem;color:#555;">' + notesLines + '</td>' +
+      '<td style="padding:2px 6px;vertical-align:middle;font-size:0.6rem;color:#666;white-space:nowrap;text-align:right;">$' + (p.currentBase||p.base||0) + '</td>' +
     '</tr>';
   }
 
@@ -3250,19 +3273,12 @@ function printRosterList() {
     if (!players.length) return '';
     var tc   = TIER_COLOR[t];
     var rows = players.map(playerRow).join('');
-    return '<div style="margin-bottom:18px;break-inside:avoid-column;">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;padding:5px 8px;background:' + TIER_BGLIGHT[t] + ';border-left:4px solid ' + tc + ';border-radius:0 4px 4px 0;">' +
-        '<span style="font-weight:800;font-size:0.78rem;letter-spacing:2px;text-transform:uppercase;color:' + tc + ';">' + t + '</span>' +
-        '<span style="font-size:0.68rem;color:#888;">' + players.length + ' players &nbsp;·&nbsp; Base $' + TIER_BASE[t] + '</span>' +
+    return '<div style="margin-bottom:9px;break-inside:avoid-column;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;padding:2px 6px;background:' + TIER_BGLIGHT[t] + ';border-left:3px solid ' + tc + ';">' +
+        '<span style="font-weight:800;font-size:0.66rem;letter-spacing:1.5px;text-transform:uppercase;color:' + tc + ';">' + t + '</span>' +
+        '<span style="font-size:0.58rem;color:#888;">' + players.length + ' &middot; Base $' + TIER_BASE[t] + '</span>' +
       '</div>' +
-      '<table style="width:100%;border-collapse:collapse;border:1px solid #e8e8e8;border-radius:4px;overflow:hidden;">' +
-        '<thead><tr style="background:#f5f5f5;border-bottom:2px solid #e0e0e0;">' +
-          '<th style="padding:4px 6px;text-align:left;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;width:42px;"></th>' +
-          '<th style="padding:4px 8px;text-align:left;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;">Name</th>' +
-          '<th style="padding:4px 8px;text-align:left;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;">Skills &amp; Notes</th>' +
-          '<th style="padding:4px 8px;text-align:right;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;">Base</th>' +
-          '<th style="padding:4px 8px;text-align:center;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;border-left:1px solid #e8e8e8;width:80px;">Bid / Won</th>' +
-        '</tr></thead>' +
+      '<table style="width:100%;border-collapse:collapse;border:1px solid #eee;">' +
         '<tbody>' + rows + '</tbody>' +
       '</table>' +
     '</div>';
@@ -3273,33 +3289,22 @@ function printRosterList() {
     .sort(function(a,b){ return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
 
   var capRows = captains.map(function(p, idx) {
-    var photo = p.pic
-      ? '<img src="' + p.pic + '" style="width:36px;height:36px;object-fit:cover;object-position:top;border-radius:4px;border:1px solid #ddd;display:block;">'
-      : '<div style="width:36px;height:36px;border-radius:4px;border:1px solid #e0e0e0;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">👑</div>';
     var rowBg = idx % 2 === 0 ? '' : 'background:#fafafa;';
     var teamName = '';
     var team = state.teams.find(function(t){ return t.id === p.draftedBy; });
     if (team) teamName = team.name;
     return '<tr style="' + rowBg + 'border-bottom:1px solid #eee;">' +
-      '<td style="padding:5px 6px;vertical-align:middle;width:42px;">' + photo + '</td>' +
-      '<td style="padding:5px 8px;vertical-align:middle;font-weight:600;font-size:0.78rem;">' + p.name + '</td>' +
-      '<td style="padding:5px 8px;vertical-align:middle;font-size:0.72rem;color:#888;font-style:italic;">' + (teamName || '—') + '</td>' +
-      '<td colspan="2" style="padding:5px 8px;"></td>' +
+      '<td style="padding:2px 6px;vertical-align:middle;font-weight:600;font-size:0.68rem;">' + p.name + '</td>' +
+      '<td style="padding:2px 6px;vertical-align:middle;font-size:0.6rem;color:#888;font-style:italic;" colspan="2">' + (teamName || '\u2014') + '</td>' +
     '</tr>';
   }).join('');
 
-  var capSection = '<div style="margin-bottom:18px;break-inside:avoid-column;">' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;padding:5px 8px;background:#f3eeff;border-left:4px solid #8040c0;border-radius:0 4px 4px 0;">' +
-      '<span style="font-weight:800;font-size:0.78rem;letter-spacing:2px;text-transform:uppercase;color:#8040c0;">Captains</span>' +
-      '<span style="font-size:0.68rem;color:#888;">' + captains.length + ' teams &nbsp;·&nbsp; Pre-assigned</span>' +
+  var capSection = '<div style="margin-bottom:9px;break-inside:avoid-column;">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;padding:2px 6px;background:#f3eeff;border-left:3px solid #8040c0;">' +
+      '<span style="font-weight:800;font-size:0.66rem;letter-spacing:1.5px;text-transform:uppercase;color:#8040c0;">Captains</span>' +
+      '<span style="font-size:0.58rem;color:#888;">' + captains.length + ' teams</span>' +
     '</div>' +
-    '<table style="width:100%;border-collapse:collapse;border:1px solid #e8e8e8;border-radius:4px;overflow:hidden;">' +
-      '<thead><tr style="background:#f5f5f5;border-bottom:2px solid #e0e0e0;">' +
-        '<th style="padding:4px 6px;width:42px;"></th>' +
-        '<th style="padding:4px 8px;text-align:left;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;">Captain</th>' +
-        '<th style="padding:4px 8px;text-align:left;font-size:0.62rem;letter-spacing:1px;color:#888;font-weight:600;text-transform:uppercase;">Team</th>' +
-        '<th colspan="2"></th>' +
-      '</tr></thead>' +
+    '<table style="width:100%;border-collapse:collapse;border:1px solid #eee;">' +
       '<tbody>' + capRows + '</tbody>' +
     '</table>' +
   '</div>';
@@ -3314,19 +3319,18 @@ function printRosterList() {
     '<title>FVL Fall 2026 — Player Roster</title>' +
     '<style>' +
       '*{box-sizing:border-box;margin:0;padding:0;}' +
-      'html,body{font-family:Arial,sans-serif;background:#fff;color:#222;font-size:13px;}' +
-      'body{padding:14px 16px 20px;}' +
-      '.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #d4a800;}' +
+      'html,body{font-family:Arial,sans-serif;background:#fff;color:#222;font-size:11px;}' +
+      'body{padding:10px 12px 12px;}' +
+      '.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #d4a800;}' +
       '.hdr-left{}' +
-      '.league-name{font-size:0.58rem;letter-spacing:5px;text-transform:uppercase;color:#999;margin-bottom:2px;}' +
-      '.doc-title{font-size:1.45rem;font-weight:900;letter-spacing:2px;color:#111;line-height:1;}' +
-      '.doc-sub{font-size:0.65rem;letter-spacing:2px;color:#666;margin-top:3px;}' +
-      '.hdr-right{text-align:right;font-size:0.65rem;color:#888;line-height:1.7;}' +
-      '.tier-grid{columns:2;column-gap:18px;}' +
+      '.league-name{font-size:0.5rem;letter-spacing:4px;text-transform:uppercase;color:#999;margin-bottom:2px;}' +
+      '.doc-title{font-size:1.1rem;font-weight:900;letter-spacing:1.5px;color:#111;line-height:1;}' +
+      '.doc-sub{font-size:0.56rem;letter-spacing:1.5px;color:#666;margin-top:2px;}' +
+      '.hdr-right{text-align:right;font-size:0.56rem;color:#888;line-height:1.5;}' +
+      '.tier-grid{columns:3;column-gap:12px;}' +
       '@media print{' +
-        '@page{size:A4;margin:10mm 12mm;}' +
-        'body{padding:0;font-size:11px;}' +
-        'img{-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+        '@page{size:A4;margin:8mm 10mm;}' +
+        'body{padding:0;font-size:10px;}' +
         '.no-print{display:none!important;}' +
       '}' +
     '</style>' +
