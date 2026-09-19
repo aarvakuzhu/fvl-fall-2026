@@ -544,7 +544,7 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .poster-player-row{display:flex;align-items:center;gap:10px;padding:6px 16px;transition:background 0.15s}
 .poster-player-row:hover{background:rgba(var(--fg-rgb),0.03)}
 .poster-player-tier{width:28px;height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--fu);font-size:0.58rem;font-weight:700;letter-spacing:1px;flex-shrink:0}
-.poster-player-name{font-family:var(--fu);font-size:0.78rem;letter-spacing:0.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.poster-player-name{font-family:var(--fu);font-size:0.78rem;letter-spacing:0.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .poster-player-price{font-family:var(--fu);font-size:0.7rem;letter-spacing:1px;opacity:0.55;flex-shrink:0}
 .poster-captain-row{display:flex;align-items:center;gap:10px;padding:6px 16px 8px}
 .poster-captain-badge{font-family:var(--fu);font-size:0.58rem;font-weight:700;letter-spacing:2px;color:#05080f;background:var(--gold);padding:2px 6px;border-radius:2px;flex-shrink:0;text-transform:uppercase}
@@ -670,8 +670,8 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .poster-player-row:hover{border-color:var(--border2)}
 .poster-player-photo{width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:top;flex-shrink:0;background:var(--surface3)}
 .poster-player-photo-placeholder{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--fu);font-size:0.6rem;color:var(--muted)}
-.poster-player-name{font-family:var(--fu);font-size:0.82rem;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.poster-player-tier{font-family:var(--fu);font-size:0.6rem;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;flex-shrink:0}
+.poster-player-name{font-family:var(--fu);font-size:0.82rem;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.poster-player-tier{font-family:var(--fu);font-size:0.6rem;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;flex-shrink:0;min-width:18px;text-align:center}
 .poster-player-price{font-family:var(--fu);font-size:0.72rem;color:var(--gold);font-weight:700;flex-shrink:0;min-width:44px;text-align:right}
 .poster-empty-slot{font-family:var(--fu);font-size:0.72rem;color:var(--muted);letter-spacing:1px;padding:5px 8px;border:1px dashed rgba(var(--fg-rgb),0.06);border-radius:6px;text-align:center}
 .poster-budget-bar-wrap{height:3px;background:rgba(var(--fg-rgb),0.06);border-radius:2px;margin:0 14px 0}
@@ -1320,6 +1320,15 @@ const ROUND_DEFS = [
 ];
 
 function tierLabel(tier) { return tier; }
+
+// Short tier label for tight spaces (currently just the Teams view's
+// player rows, where the full name was overlapping the player's name).
+// Single letter where unambiguous; Biryani/Biscuit both start with B so
+// those two get a 2-letter distinguisher instead.
+function tierAbbrev(tier) {
+  var map = { Mandi: 'M', Biryani: 'BY', Samosa: 'S', Chai: 'C', Biscuit: 'BI' };
+  return map[tier] || (tier ? tier.charAt(0) : '');
+}
 
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -3040,7 +3049,7 @@ function buildPosterCard(team, colorIdx) {
     return `<div class="poster-player-row">
       ${photoHtml}
       <div class="poster-player-name" title="${pick.playerName}">${pick.playerName}</div>
-      <div class="poster-player-tier" style="${tierStyle}">${tierLabel(pick.tier)}</div>
+      <div class="poster-player-tier" style="${tierStyle}" title="${pick.tier}">${tierAbbrev(pick.tier)}</div>
       <div class="poster-player-price">$${pick.price}</div>
     </div>`;
   }).join('');
