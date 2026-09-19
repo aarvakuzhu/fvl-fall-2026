@@ -684,6 +684,23 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
   .poster-card-header::before{display:none}
 }
 
+@media print{
+  /* Rules print reuses the live overlay's markup rather than building a
+     separate document \u2014 the content only depends on 3 CSS variables
+     (--gold, --muted, --fg-rgb via rules-card/rules-list backgrounds) plus
+     two hardcoded #fff text colors, so redefining those for print is
+     enough to make it legible on paper without duplicating any text. */
+  #rules-overlay{
+    position:static!important;background:#fff!important;overflow:visible!important;
+    --gold:#8a6d00;--muted:#555;--text:#111;--fg-rgb:10,14,30;
+  }
+  body>*:not(#rules-overlay){display:none!important}
+  #rules-print-btn,#rules-close-btn,#theme-toggle{display:none!important}
+  #rules-overlay .rules-card-value,#rules-overlay .rules-list li strong{color:#111!important}
+  #rules-overlay .ex{color:#445!important}
+  #rules-overlay .rules-section{break-inside:avoid}
+}
+
 /* ── RESPONSIVE ─────────────────────────────────── */
 
 /* Narrow split-screen / tablet (≤900px) */
@@ -1123,7 +1140,10 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
         <div style="font-family:var(--fd);font-size:0.75rem;letter-spacing:3px;color:var(--muted);margin-top:6px;">Fall 2026 Season</div>
         <div style="width:80px;height:2px;background:linear-gradient(90deg,var(--gold),transparent);margin-top:12px;"></div>
       </div>
-      <button id="rules-close-btn" style="background:rgba(var(--fg-rgb),0.06);border:1px solid rgba(var(--fg-rgb),0.12);color:var(--text);border-radius:4px;padding:8px 18px;cursor:pointer;font-family:var(--fu);font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;flex-shrink:0;margin-top:4px;">✕ Close</button>
+      <div style="display:flex;gap:8px;flex-shrink:0;margin-top:4px;">
+        <button id="rules-print-btn" style="background:rgba(240,192,64,0.08);border:1px solid rgba(240,192,64,0.3);color:var(--gold);border-radius:4px;padding:8px 16px;cursor:pointer;font-family:var(--fu);font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;">🖨 Print</button>
+        <button id="rules-close-btn" style="background:rgba(var(--fg-rgb),0.06);border:1px solid rgba(var(--fg-rgb),0.12);color:var(--text);border-radius:4px;padding:8px 18px;cursor:pointer;font-family:var(--fu);font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;flex-shrink:0;">✕ Close</button>
+      </div>
     </div>
 
     <!-- Rules content injected by JS -->
@@ -3866,6 +3886,10 @@ function closeRules() {
   document.body.style.overflow = '';
 }
 
+function printRules() {
+  window.print();
+}
+
 /* ── ADMIN (Tournament Director only) ── */
 
 function showAdmin() {
@@ -4118,6 +4142,7 @@ function attachEventListeners() {
   });
   document.getElementById('btn-rules').addEventListener('click', showRules);
   document.getElementById('rules-close-btn').addEventListener('click', closeRules);
+  document.getElementById('rules-print-btn').addEventListener('click', printRules);
   document.getElementById('rules-overlay').addEventListener('click', function(e) {
     if (e.target === document.getElementById('rules-overlay')) closeRules();
   });
