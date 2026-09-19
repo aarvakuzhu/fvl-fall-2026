@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FVL Major — Oct 10, 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap');
+
+  :root{
+    --ink:#0e1a2b;
+    --court:#122544;
+    --line:#e8e2d2;
+    --gold:#d4af37;
+    --silver:#c7ccd1;
+    --bronze:#b5824a;
+    --copper:#a86a3d;
+    --volley:#ff7a3d;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{width:100%;}
+  body{
+    background:var(--ink);
+    color:var(--line);
+    font-family:'Work Sans', sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:24px;
+    padding:20px 0;
+  }
+  .page{
+    width:100%;
+    max-width:8.5in;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(255,122,61,0.10), transparent 60%),
+      linear-gradient(180deg, var(--court) 0%, var(--ink) 55%);
+    border:1px solid rgba(232,226,210,0.15);
+    position:relative;
+    overflow:hidden;
+    padding:clamp(20px,5vw,0.4in) clamp(18px,5vw,0.55in);
+  }
+
+  .eyebrow{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    letter-spacing:0.28em;
+    font-size:clamp(11px,2.6vw,13px);
+    color:var(--volley);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(48px,15vw,68px);
+    line-height:0.92;
+    letter-spacing:0.01em;
+    color:var(--line);
+    margin-top:4px;
+  }
+  h1 span{color:var(--volley);}
+
+  .meta-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px 20px;
+    margin-top:16px;
+    font-family:'Oswald', sans-serif;
+    font-weight:500;
+    font-size:clamp(15px,3.6vw,16px);
+  }
+  .meta-grid div{border-left:3px solid var(--volley); padding-left:12px;}
+  .meta-grid b{display:block; font-size:11px; letter-spacing:0.12em; color:rgba(232,226,210,0.6); text-transform:uppercase; margin-bottom:3px; font-family:'Work Sans'; font-weight:600;}
+
+  .tagline{
+    margin-top:14px;
+    font-size:clamp(15px,3.8vw,17px);
+    color:rgba(232,226,210,0.9);
+    line-height:1.4;
+  }
+  .tagline strong{color:var(--line);}
+
+  h2.section{
+    font-family:'Oswald', sans-serif;
+    font-size:clamp(13px,3.2vw,14px);
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--volley);
+    border-bottom:1px solid rgba(232,226,210,0.25);
+    padding-bottom:5px;
+    margin:12px 0 6px 0;
+  }
+
+  ul.format{list-style:none;}
+  ul.format li{
+    display:flex;
+    gap:12px;
+    font-size:clamp(13.5px,3.4vw,14.5px);
+    padding:5px 0;
+    border-bottom:1px dashed rgba(232,226,210,0.15);
+    line-height:1.3;
+  }
+  ul.format li b{
+    font-family:'Bebas Neue';
+    font-size:24px;
+    color:var(--volley);
+    width:28px;
+    flex-shrink:0;
+  }
+  ul.format li span strong{color:var(--line);}
+
+  .ladder{
+    margin-top:10px;
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    height:80px;
+  }
+  .step{
+    flex:1;
+    border-radius:6px 6px 0 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:clamp(11px,3vw,13px);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .step.gold{height:80px; background:linear-gradient(180deg, var(--gold), #a9822a); color:#241a02;}
+  .step.silver{height:64px; background:linear-gradient(180deg, var(--silver), #8d9297); color:#161a1d;}
+  .step.bronze{height:50px; background:linear-gradient(180deg, var(--bronze), #8a5f34); color:#22140a;}
+  .step.copper{height:38px; background:linear-gradient(180deg, var(--copper), #7c4f2c); color:#1f1006;}
+
+  .stat-banner{
+    margin-top:14px;
+    background:rgba(255,122,61,0.1);
+    border:1px solid rgba(255,122,61,0.35);
+    border-radius:8px;
+    padding:10px 18px;
+    text-align:center;
+  }
+  .stat-banner .num{
+    font-family:'Bebas Neue';
+    font-size:clamp(30px,10vw,38px);
+    color:var(--volley);
+    line-height:1;
+  }
+  .stat-banner .lbl{
+    font-family:'Oswald';
+    font-size:clamp(12px,3vw,13px);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:rgba(232,226,210,0.8);
+    margin-top:4px;
+  }
+
+  table.prizes{width:100%; border-collapse:collapse; margin-top:4px;}
+  table.prizes th{
+    text-align:left; padding:5px 6px;
+    font-family:'Oswald'; letter-spacing:0.08em; text-transform:uppercase;
+    font-size:11px; color:var(--volley);
+    border-bottom:1px solid rgba(232,226,210,0.3);
+  }
+  table.prizes td{
+    padding:6px 6px;
+    font-size:clamp(13px,3.4vw,14px);
+    border-bottom:1px dashed rgba(232,226,210,0.12);
+  }
+  table.prizes td.tag{
+    text-align:right;
+    font-family:'Oswald'; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  }
+  .tag.trophy{color:var(--gold);}
+  .tag.medal{color:rgba(232,226,210,0.55);}
+  tr.iron td{color:var(--volley); font-weight:600;}
+
+  .footer{
+    margin-top:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    font-family:'Oswald', sans-serif;
+    font-size:12px;
+    letter-spacing:0.05em;
+    color:rgba(232,226,210,0.55);
+    border-top:1px solid rgba(232,226,210,0.15);
+    padding-top:10px;
+  }
+  .footer .big{
+    font-family:'Bebas Neue';
+    font-size:clamp(20px,5vw,26px);
+    color:var(--line);
+  }
+
+  .sched-table{width:100%; border-collapse:collapse; margin-top:22px;}
+  .sched-table th{
+    text-align:left; padding:8px 6px;
+    font-family:'Oswald'; letter-spacing:0.06em; text-transform:uppercase;
+    font-size:11px; color:var(--volley);
+    border-bottom:1px solid rgba(232,226,210,0.3);
+  }
+  .sched-table td{
+    padding:8px 6px;
+    font-size:clamp(12.5px,3.2vw,13.5px);
+    border-bottom:1px dashed rgba(232,226,210,0.12);
+  }
+  .row-break{border-bottom:1px solid rgba(232,226,210,0.3) !important; background:rgba(255,122,61,0.08);}
+  .row-break td{font-weight:600;}
+  .row-final{border-bottom:1px solid rgba(232,226,210,0.3) !important; background:rgba(212,175,55,0.1);}
+  .row-final td:nth-child(2){font-weight:600; color:var(--gold);}
+
+  @media (max-width:480px){
+    .meta-grid{grid-template-columns:1fr 1fr;}
+  }
+
+  /* Bracket page */
+  .tier-block{margin-top:14px;}
+  .tier-block:first-of-type{margin-top:16px;}
+  .tier-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size:clamp(15px,4vw,17px);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:8px 12px;
+    border-radius:6px 6px 0 0;
+  }
+  .tier-head.gold{background:linear-gradient(90deg, var(--gold), #a9822a); color:#241a02;}
+  .tier-head.silver{background:linear-gradient(90deg, var(--silver), #8d9297); color:#161a1d;}
+  .tier-head.bronze{background:linear-gradient(90deg, var(--bronze), #8a5f34); color:#22140a;}
+  .tier-head.copper{background:linear-gradient(90deg, var(--copper), #7c4f2c); color:#1f1006;}
+
+  .bracket-body{
+    border:1px solid rgba(232,226,210,0.18);
+    border-top:none;
+    border-radius:0 0 6px 6px;
+    padding:10px 14px;
+    background:rgba(255,255,255,0.02);
+  }
+  .bracket-flow{
+    display:grid;
+    grid-template-columns:1fr auto 1fr auto 1fr;
+    align-items:center;
+    gap:8px;
+  }
+  .sf-pair{display:flex; flex-direction:column; gap:6px;}
+  .match{
+    background:rgba(14,26,43,0.6);
+    border:1px solid rgba(232,226,210,0.18);
+    border-radius:5px;
+    padding:5px 9px;
+    font-size:clamp(11px,2.8vw,12.5px);
+    line-height:1.3;
+  }
+  .match .vs{color:rgba(232,226,210,0.4); font-size:10px; display:block;}
+  .arrow{
+    font-size:16px;
+    color:var(--volley);
+    text-align:center;
+  }
+  .final-box{
+    background:rgba(255,122,61,0.1);
+    border:1px solid rgba(255,122,61,0.4);
+    border-radius:5px;
+    padding:10px;
+    text-align:center;
+  }
+  .final-box .lbl{font-family:'Oswald'; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--volley); margin-bottom:4px;}
+  .final-box .val{font-size:clamp(11px,2.8vw,12.5px); color:rgba(232,226,210,0.85);}
+  .champ-box{
+    margin-top:4px;
+    text-align:center;
+    font-family:'Bebas Neue';
+    font-size:clamp(15px,4.5vw,18px);
+    letter-spacing:0.04em;
+    color:var(--gold);
+  }
+  .prize-row{
+    margin-top:10px;
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .prize-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 12px;
+    border-radius:20px;
+    font-family:'Oswald';
+    font-size:clamp(11px,2.8vw,12.5px);
+    font-weight:600;
+    letter-spacing:0.03em;
+  }
+  .prize-chip.gold{background:rgba(212,175,55,0.16); border:1px solid var(--gold); color:var(--gold);}
+  .prize-chip.silver{background:rgba(199,204,209,0.16); border:1px solid var(--silver); color:var(--silver);}
+  .prize-chip.bronze{background:rgba(181,130,74,0.16); border:1px solid var(--bronze); color:var(--bronze);}
+  .prize-chip.copper{background:rgba(168,106,61,0.16); border:1px solid var(--copper); color:var(--copper);}
+  .prize-chip.iron{background:rgba(255,122,61,0.14); border:1px solid var(--volley); color:var(--volley);}
+
+  @media (max-width:520px){
+    .bracket-flow{grid-template-columns:1fr; gap:6px;}
+    .arrow{transform:rotate(90deg); padding:2px 0;}
+  }
+
+  @media print{
+    body{background:white; padding:0; gap:0;}
+    .page{
+      box-shadow:none; border:none; max-width:100%;
+      width:8.5in; height:11in;
+      page-break-after:always; page-break-inside:avoid;
+      overflow:hidden;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- PAGE 1: ALL INFO -->
+  <div class="page">
+    <div class="eyebrow">Fowler Volleyball League Presents</div>
+    <h1>FVL <span>MAJOR</span></h1>
+
+    <div class="meta-grid">
+      <div><b>Date</b>Sat, Oct 10, 2026</div>
+      <div><b>Time</b>8:30 AM – 5:30 PM</div>
+      <div><b>Venue</b>Central Park</div>
+      <div><b>Field</b>16 Teams · 2 Courts</div>
+    </div>
+
+    <p class="tagline">Every team plays <strong>5 guaranteed games</strong> — no early exits, no dead brackets.</p>
+
+    <h2 class="section">Format</h2>
+    <ul class="format">
+      <li><b>01</b><span><strong>Round 1: Pool Play (3 games)</strong> — random draw into 4 pools of 4, round robin.</span></li>
+      <li><b>02</b><span><strong>Tier Assignment</strong> — pool results sort every team into a tier: Gold, Silver, Bronze, or Copper.</span></li>
+      <li><b>03</b><span><strong>Round 2: Tiered Bracket (2 games)</strong> — each tier runs its own semifinal, then a final, deciding tier champion.</span></li>
+      <li><b>04</b><span><strong>Order of play</strong> — Copper and Bronze semis go first, Silver and Gold follow, with the Gold Final closing out the day.</span></li>
+      <li><b>05</b><span><strong>8 prizes on the line</strong> — a champion (and runner-up, where applicable) crowned in every tier, plus the Iron Will Trophy for the tournament's toughest finish.</span></li>
+    </ul>
+
+    <div class="ladder">
+      <div class="step gold">Gold</div>
+      <div class="step silver">Silver</div>
+      <div class="step bronze">Bronze</div>
+      <div class="step copper">Copper</div>
+    </div>
+
+    <div class="stat-banner">
+      <div class="num">50%</div>
+      <div class="lbl">of players walk home with a prize</div>
+    </div>
+
+    <h2 class="section">Prizes</h2>
+    <table class="prizes">
+      <thead><tr><th>Award</th><th>Tier</th><th style="text-align:right;">Type</th></tr></thead>
+      <tbody>
+        <tr><td>🥇 Gold Champion</td><td>Gold</td><td class="tag trophy">Trophy</td></tr>
+        <tr><td>🥈 Gold Runner-Up</td><td>Gold</td><td class="tag trophy">Trophy</td></tr>
+        <tr><td>🥉 Gold Third</td><td>Gold</td><td class="tag trophy">Trophy</td></tr>
+        <tr><td>Silver Champion</td><td>Silver</td><td class="tag trophy">Trophy</td></tr>
+        <tr><td>Silver Runner-Up</td><td>Silver</td><td class="tag medal">Medal</td></tr>
+        <tr><td>Bronze Champion</td><td>Bronze</td><td class="tag medal">Medal</td></tr>
+        <tr><td>Copper Champion</td><td>Copper</td><td class="tag medal">Medal</td></tr>
+        <tr class="iron"><td>🏆 Iron Will</td><td>Toughest Finish</td><td class="tag medal">Medal</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <div>Fowler Volleyball League · FVL Major</div>
+      <div class="big">OCT 10</div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: TOURNAMENT BRACKET -->
+  <div class="page">
+    <div class="eyebrow">Fowler Volleyball League · FVL Major</div>
+    <h1 style="font-size:clamp(40px,11vw,56px);">BRACKET</h1>
+    <p class="tagline" style="margin-top:6px;">16 teams · 4 pools of 4 · every pool finish feeds a tier championship.</p>
+
+    <div class="tier-block">
+      <div class="tier-head gold">Gold Bracket — Pool Winners</div>
+      <div class="bracket-body">
+        <div class="bracket-flow">
+          <div class="sf-pair">
+            <div class="match">Pool A · 1st<span class="vs">vs</span>Pool B · 1st</div>
+            <div class="match">Pool C · 1st<span class="vs">vs</span>Pool D · 1st</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div class="final-box">
+            <div class="lbl">Final</div>
+            <div class="val">SF1 Winner vs SF2 Winner</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div>
+            <div class="final-box">
+              <div class="lbl">3rd Place</div>
+              <div class="val">SF1 Loser vs SF2 Loser</div>
+            </div>
+          </div>
+        </div>
+        <div class="prize-row">
+          <div class="prize-chip gold">🥇 Champion</div>
+          <div class="prize-chip gold">🥈 Runner-Up</div>
+          <div class="prize-chip gold">🥉 Third</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head silver">Silver Bracket — Pool Runners-Up</div>
+      <div class="bracket-body">
+        <div class="bracket-flow">
+          <div class="sf-pair">
+            <div class="match">Pool A · 2nd<span class="vs">vs</span>Pool B · 2nd</div>
+            <div class="match">Pool C · 2nd<span class="vs">vs</span>Pool D · 2nd</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div class="final-box">
+            <div class="lbl">Final</div>
+            <div class="val">SF1 Winner vs SF2 Winner</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div>
+            <div class="final-box">
+              <div class="lbl">Result</div>
+              <div class="val">Champion · Runner-up</div>
+            </div>
+          </div>
+        </div>
+        <div class="prize-row">
+          <div class="prize-chip silver">Champion</div>
+          <div class="prize-chip silver">Runner-Up</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head bronze">Bronze Bracket — Pool Thirds</div>
+      <div class="bracket-body">
+        <div class="bracket-flow">
+          <div class="sf-pair">
+            <div class="match">Pool A · 3rd<span class="vs">vs</span>Pool B · 3rd</div>
+            <div class="match">Pool C · 3rd<span class="vs">vs</span>Pool D · 3rd</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div class="final-box">
+            <div class="lbl">Final</div>
+            <div class="val">SF1 Winner vs SF2 Winner</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div>
+            <div class="final-box">
+              <div class="lbl">Result</div>
+              <div class="val">Champion</div>
+            </div>
+          </div>
+        </div>
+        <div class="prize-row">
+          <div class="prize-chip bronze">Champion</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head copper">Copper Bracket — Pool Fourths</div>
+      <div class="bracket-body">
+        <div class="bracket-flow">
+          <div class="sf-pair">
+            <div class="match">Pool A · 4th<span class="vs">vs</span>Pool B · 4th</div>
+            <div class="match">Pool C · 4th<span class="vs">vs</span>Pool D · 4th</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div class="final-box">
+            <div class="lbl">Final</div>
+            <div class="val">SF1 Winner vs SF2 Winner</div>
+          </div>
+          <div class="arrow">➜</div>
+          <div>
+            <div class="final-box">
+              <div class="lbl">4th Place</div>
+              <div class="val">SF1 Loser vs SF2 Loser</div>
+            </div>
+          </div>
+        </div>
+        <div class="prize-row">
+          <div class="prize-chip copper">Champion</div>
+          <div class="prize-chip iron">🏆 Iron Will (4th)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>Fowler Volleyball League · FVL Major</div>
+      <div class="big">OCT 10</div>
+    </div>
+  </div>
+
+  <!-- PAGE 3: SCHEDULE -->
+  <div class="page">
+    <div class="eyebrow">Fowler Volleyball League · FVL Major</div>
+    <h1 style="font-size:clamp(40px,11vw,56px);">SCHEDULE</h1>
+    <p class="tagline" style="margin-top:6px;">Central Park · 2 Courts · Warm-up 8:30, first serve 8:40.</p>
+
+    <table class="sched-table">
+      <thead>
+        <tr><th>Time</th><th>Court 1</th><th>Court 2</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>8:30–8:40</td><td colspan="2">Warm-up</td></tr>
+        <tr><td>8:40–9:05</td><td>Pool A: 1v2</td><td>Pool B: 1v2</td></tr>
+        <tr><td>9:05–9:30</td><td>Pool C: 1v2</td><td>Pool D: 1v2</td></tr>
+        <tr><td>9:30–9:55</td><td>Pool A: 3v4</td><td>Pool B: 3v4</td></tr>
+        <tr><td>9:55–10:20</td><td>Pool C: 3v4</td><td>Pool D: 3v4</td></tr>
+        <tr><td>10:20–10:45</td><td>Pool A: 1v3</td><td>Pool B: 1v3</td></tr>
+        <tr><td>10:45–11:10</td><td>Pool C: 1v3</td><td>Pool D: 1v3</td></tr>
+        <tr><td>11:10–11:35</td><td>Pool A: 2v4</td><td>Pool B: 2v4</td></tr>
+        <tr><td>11:35–12:00</td><td>Pool C: 2v4</td><td>Pool D: 2v4</td></tr>
+        <tr><td>12:00–12:25</td><td>Pool A: 1v4</td><td>Pool B: 1v4</td></tr>
+        <tr><td>12:25–12:50</td><td>Pool C: 1v4</td><td>Pool D: 1v4</td></tr>
+        <tr><td>12:50–13:15</td><td>Pool A: 2v3</td><td>Pool B: 2v3</td></tr>
+        <tr><td>13:15–13:40</td><td>Pool C: 2v3</td><td>Pool D: 2v3</td></tr>
+        <tr class="row-break"><td>13:40–14:10</td><td colspan="2">Lunch &amp; Seeding</td></tr>
+        <tr><td>14:10–14:35</td><td>Copper Semifinal 1</td><td>Bronze Semifinal 1</td></tr>
+        <tr><td>14:35–15:00</td><td>Copper Semifinal 2</td><td>Bronze Semifinal 2</td></tr>
+        <tr><td>15:00–15:25</td><td>Gold Semifinal 1</td><td>Silver Semifinal 1</td></tr>
+        <tr><td>15:25–15:50</td><td>Gold Semifinal 2</td><td>Silver Semifinal 2</td></tr>
+        <tr><td>15:50–16:15</td><td>Copper Third Place</td><td>Bronze Third Place</td></tr>
+        <tr><td>16:15–16:40</td><td>Gold Third Place</td><td>Silver Third Place</td></tr>
+        <tr><td>16:40–17:05</td><td>Copper Final</td><td>Bronze Final</td></tr>
+        <tr class="row-final"><td>17:05–17:30</td><td>Gold Final</td><td>Silver Final</td></tr>
+        <tr><td>17:30–17:50</td><td colspan="2">Awards</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <div>Fowler Volleyball League · FVL Major</div>
+      <div class="big">OCT 10</div>
+    </div>
+  </div>
+
+</body>
+</html>

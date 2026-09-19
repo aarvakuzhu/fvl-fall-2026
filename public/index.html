@@ -1193,6 +1193,24 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
       <div id="admin-budget-log" style="margin-top:16px;font-family:var(--fu);font-size:0.75rem;color:var(--text2);line-height:1.8;max-height:220px;overflow-y:auto;"></div>
     </div>
 
+    <div class="rules-section">
+      <div class="rules-section-title">Tournament \u2014 Lock, Schedule &amp; Reveal</div>
+      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;max-width:560px;">
+        Once the draft is done: lock the teams (a permanent snapshot, safe from any later draft reset),
+        generate the pool-play schedule from that snapshot, then reveal when ready \u2014 nothing here is
+        visible to anyone but the TD until you flip Reveal.
+      </p>
+
+      <div id="admin-tournament-status" style="font-family:var(--fu);font-size:0.8rem;color:var(--text2);line-height:2;margin-bottom:14px;">Loading&hellip;</div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="admin-lock-teams-btn" class="btn btn-danger" style="padding:9px 18px;">\uD83D\uDD12 Lock Teams</button>
+        <button id="admin-gen-schedule-btn" class="btn btn-gold" style="padding:9px 18px;">\uD83C\uDFD0 Generate Pool Schedule</button>
+        <button id="admin-view-flyer-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDCCB View Flyer</button>
+        <button id="admin-reveal-btn" class="btn btn-outline" style="padding:9px 18px;">\uD83D\uDC41 Reveal to Everyone</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -4095,6 +4113,7 @@ function showAdmin() {
   document.body.style.overflow = 'hidden';
   loadAdminStats();
   renderAdminBudgetPanel();
+  loadAdminTournamentStatus();
 }
 
 function closeAdmin() {
@@ -4229,6 +4248,112 @@ function _doApplyBudgetAdjustment(teamId, amount, reason) {
   toast('✓ ' + (amount > 0 ? '+' : '\u2212') + fmt(Math.abs(amount)) + ' applied to ' + team.name + '.', 'success');
 }
 
+/* ── ADMIN: Tournament (lock / schedule / reveal) ── */
+
+async function loadAdminTournamentStatus() {
+  const el = document.getElementById('admin-tournament-status');
+  if (!el) return;
+  el.innerHTML = 'Loading&hellip;';
+  try {
+    const [lockedRes, cfgRes, schedRes] = await Promise.all([
+      fetch('/api/tournament/locked', { headers: { 'x-td-token': TD_TOKEN || '' } }),
+      fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN || '' } }),
+      fetch('/api/tournament/schedule', { headers: { 'x-td-token': TD_TOKEN || '' } }),
+    ]);
+    const locked = await lockedRes.json();
+    const cfg    = await cfgRes.json();
+    const sched  = await schedRes.json();
+
+    const lockedLine = locked.locked
+      ? '\uD83D\uDD12 <strong style="color:var(--text);">Locked</strong> \u2014 ' + locked.teams.length + ' teams, at ' + new Date(locked.lockedAt).toLocaleString()
+      : '\u26AA Not locked yet';
+    const schedLine = (sched.matches && sched.matches.length)
+      ? '\uD83C\uDFD0 <strong style="color:var(--text);">Schedule generated</strong> \u2014 ' + sched.matches.length + ' pool matches across ' + (cfg ? cfg.poolCount : '?') + ' pools'
+      : '\u26AA No schedule yet';
+    const revealLine = cfg && cfg.revealed
+      ? '\uD83D\uDC41 <strong style="color:var(--success);">Revealed</strong> \u2014 visible to everyone'
+      : '\uD83D\uDD12 <strong style="color:var(--danger);">Hidden</strong> \u2014 TD only';
+
+    el.innerHTML = lockedLine + '<br>' + schedLine + '<br>' + revealLine;
+
+    const revealBtn = document.getElementById('admin-reveal-btn');
+    if (revealBtn) revealBtn.textContent = (cfg && cfg.revealed) ? '\uD83D\uDD12 Hide Again' : '\uD83D\uDC41 Reveal to Everyone';
+  } catch (e) {
+    el.textContent = 'Could not load tournament status.';
+  }
+}
+
+async function lockTeamsFromUI() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  openModal(
+    'Lock Teams',
+    'This snapshots the current official draft\u2019s teams as final. Schedule and Standings will only ever read this snapshot \u2014 resetting the draft later will NOT affect it. Re-locking later overwrites this snapshot. Continue?',
+    async function() {
+      try {
+        const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+        const body = await res.json();
+        if (!res.ok) { toast('\u26A0 Lock failed: ' + (body.error || res.status), 'danger'); return; }
+        toast('\u2713 Locked ' + body.teams + ' teams.', 'success');
+        loadAdminTournamentStatus();
+      } catch (e) {
+        toast('\u26A0 Lock failed \u2014 check your connection.', 'danger');
+      }
+    }
+  );
+}
+
+async function generateScheduleFromUI() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  openModal(
+    'Generate Pool Schedule',
+    'Randomly draws the locked teams into pools and builds the full pool-play match schedule. Re-running this overwrites any existing pool draw \u2014 do this once teams are final. Continue?',
+    async function() {
+      try {
+        const res = await fetch('/api/tournament/schedule/generate-pools', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+        const body = await res.json();
+        if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
+        toast('\u2713 Schedule generated: ' + body.matches + ' matches.', 'success');
+        loadAdminTournamentStatus();
+      } catch (e) {
+        toast('\u26A0 Schedule generation failed \u2014 check your connection.', 'danger');
+      }
+    }
+  );
+}
+
+function viewFlyerFromUI() {
+  window.open('/flyer.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
+}
+
+async function toggleRevealFromUI() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  try {
+    const cfgRes = await fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN } });
+    const cfg = await cfgRes.json();
+    const nextRevealed = !(cfg && cfg.revealed);
+    const verb = nextRevealed ? 'Reveal' : 'Hide';
+    openModal(
+      verb + ' Tournament',
+      nextRevealed
+        ? 'This makes the flyer, schedule, and standings visible to everyone \u2014 not just the TD. Continue?'
+        : 'This hides the tournament again \u2014 back to TD-only. Continue?',
+      async function() {
+        const res = await fetch('/api/tournament/config/reveal', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+          body: JSON.stringify({ revealed: nextRevealed }),
+        });
+        const body = await res.json();
+        if (!res.ok) { toast('\u26A0 ' + (body.error || res.status), 'danger'); return; }
+        toast(nextRevealed ? '\uD83D\uDC41 Revealed to everyone.' : '\uD83D\uDD12 Hidden again.', 'info');
+        loadAdminTournamentStatus();
+      }
+    );
+  } catch (e) {
+    toast('\u26A0 Could not check reveal status.', 'danger');
+  }
+}
+
 function exportCSV() {
   const rows = [['Team','Captain','Budget Remaining','Total Spent','Player','Tier','Price Paid']];
 
@@ -4359,6 +4484,10 @@ function attachEventListeners() {
     );
   });
   document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
+  document.getElementById('admin-lock-teams-btn').addEventListener('click', lockTeamsFromUI);
+  document.getElementById('admin-gen-schedule-btn').addEventListener('click', generateScheduleFromUI);
+  document.getElementById('admin-view-flyer-btn').addEventListener('click', viewFlyerFromUI);
+  document.getElementById('admin-reveal-btn').addEventListener('click', toggleRevealFromUI);
 
   // TD manual override controls
   var ovTeam   = document.getElementById('td-override-team');

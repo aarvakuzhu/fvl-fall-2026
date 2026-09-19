@@ -1,0 +1,31 @@
+{
+  "tournamentId": "fvl-major-oct-2026",
+  "name": "FVL Major",
+  "date": "Sat, Oct 10, 2026",
+  "timeStart": "08:40",
+  "timeEnd": "17:50",
+  "venue": "Central Park",
+  "courts": 2,
+  "teamCount": 16,
+  "poolCount": 4,
+  "poolSize": 4,
+  "poolGamesPerTeam": 3,
+  "tieredGamesPerTeam": 2,
+  "tiers": [
+    { "name": "Gold", "order": 0 },
+    { "name": "Silver", "order": 1 },
+    { "name": "Bronze", "order": 2 },
+    { "name": "Copper", "order": 3 }
+  ],
+  "prizes": [
+    { "award": "Gold Champion", "tier": "Gold", "type": "Trophy" },
+    { "award": "Gold Runner-Up", "tier": "Gold", "type": "Trophy" },
+    { "award": "Gold Third", "tier": "Gold", "type": "Trophy" },
+    { "award": "Silver Champion", "tier": "Silver", "type": "Trophy" },
+    { "award": "Silver Runner-Up", "tier": "Silver", "type": "Medal" },
+    { "award": "Bronze Champion", "tier": "Bronze", "type": "Medal" },
+    { "award": "Copper Champion", "tier": "Copper", "type": "Medal" },
+    { "award": "Iron Will", "tier": "Toughest Finish", "type": "Medal" }
+  ],
+  "revealed": false
+}

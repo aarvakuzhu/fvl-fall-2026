@@ -1,0 +1,50 @@
+const mongoose = require('mongoose');
+
+/**
+ * One match. Pool-play matches have real teams from the moment pools are
+ * assigned. Tiered-bracket matches (Gold/Silver/Bronze/Copper semis,
+ * finals, 3rd-place) can't have real teams until pool standings exist \u2014
+ * those get added in the Scores/Standings phase, not here.
+ */
+const MatchSchema = new mongoose.Schema(
+  {
+    matchId: { type: String, required: true },      // e.g. "poolA-1v2", "gold-sf1"
+    phase:   { type: String, required: true },        // "pool" | "tiered"
+    group:   { type: String, required: true },        // pool name "A".."D", or tier name "Gold".."Copper"
+    label:   { type: String, required: true },        // display, e.g. "Pool A: 1v2"
+    court:   { type: Number, default: null },
+    timeStart: { type: String, default: '' },
+    timeEnd:   { type: String, default: '' },
+
+    teamAId: { type: Number, default: null },        // portable team id (LockedRoster teamId), null if not yet resolved
+    teamBId: { type: Number, default: null },
+    teamAName: { type: String, default: '' },          // cached display name, avoids a join for the schedule view
+    teamBName: { type: String, default: '' },
+
+    scoreA: { type: Number, default: null },
+    scoreB: { type: Number, default: null },
+    completed: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const PoolAssignmentSchema = new mongoose.Schema(
+  {
+    pool:   { type: String, required: true },   // "A".."D"
+    teamId: { type: Number, required: true },
+    teamName: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const ScheduleSchema = new mongoose.Schema(
+  {
+    tournamentId: { type: String, required: true, unique: true, index: true },
+    pools:        { type: [PoolAssignmentSchema], default: [] }, // the random draw result
+    matches:      { type: [MatchSchema], default: [] },
+    generatedAt:  { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model('Schedule', ScheduleSchema);

@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const express = require('express');
@@ -7,9 +8,12 @@ const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 
 const apiRoutes = require('./routes/api');
+const tournamentRoutes = require('./routes/tournament');
 const Roster = require('./models/Roster');
+const TournamentConfig = require('./models/TournamentConfig');
 const { ROSTER_ID } = require('./utils/constants');
 const { readSeedFile } = require('./utils/rosterSeed');
+const { isValidToken } = require('./utils/tdAuth');
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -32,8 +36,29 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', apiRoutes);
+app.use('/api/tournament', tournamentRoutes);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
+
+// The flyer is deliberately NOT in /public \u2014 served through this route
+// instead, so it's gated the same way as the rest of the tournament data
+// (open once TournamentConfig.revealed is true, TD-only via ?td=<token>
+// until then). window.open() can't set custom headers, hence the query
+// param instead of the x-td-token header the rest of the API uses.
+app.get('/flyer.html', async (req, res) => {
+  try {
+    const cfg = await TournamentConfig.findOne({ tournamentId: tournamentRoutes.TOURNAMENT_ID }).lean();
+    const revealed = !!(cfg && cfg.revealed);
+    const authorized = revealed || isValidToken(req.query.td);
+    if (!authorized) {
+      return res.status(403).send('Not available yet.');
+    }
+    res.sendFile(path.join(__dirname, 'views', 'flyer.html'));
+  } catch (err) {
+    console.error('GET /flyer.html error:', err);
+    res.status(500).send('Failed to load flyer.');
+  }
+});
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -72,11 +97,33 @@ async function seedRosterIfEmpty() {
   }
 }
 
+// Same pattern as the roster seed \u2014 only fires if no config exists yet,
+// never overwrites live edits (TD flips `revealed` and other fields via
+// the Admin screen / API after this).
+async function seedTournamentConfigIfEmpty() {
+  const existing = await TournamentConfig.findOne({ tournamentId: tournamentRoutes.TOURNAMENT_ID }).lean();
+  if (existing) return;
+
+  const seedPath = path.join(__dirname, 'data', 'tournament-fvl-major-oct-2026.json');
+  if (!fs.existsSync(seedPath)) {
+    console.warn(`No tournament config and no seed file at ${seedPath}.`);
+    return;
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+    await TournamentConfig.create(data);
+    console.log(`Seeded tournament config "${data.tournamentId}" from ${seedPath}.`);
+  } catch (err) {
+    console.error('Failed to seed tournament config from', seedPath, err);
+  }
+}
+
 mongoose
   .connect(MONGODB_URI)
   .then(async () => {
     console.log('Connected to MongoDB');
     await seedRosterIfEmpty();
+    await seedTournamentConfigIfEmpty();
     server.listen(PORT, () => console.log(`FVL Draft server listening on port ${PORT}`));
   })
   .catch((err) => {
