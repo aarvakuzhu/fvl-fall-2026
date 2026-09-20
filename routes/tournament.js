@@ -43,18 +43,29 @@ router.post('/lock', requireTd, async (req, res) => {
       return res.status(404).json({ error: 'No official draft state to lock yet' });
     }
 
+    const playerById = new Map((draft.data.players || []).map((p) => [p.id, p]));
+
     const teams = draft.data.teams.map((t) => ({
       teamId: t.id,
       name: t.name,
       budget: t.budget,
       spent: t.spent,
-      roster: (t.roster || []).map((r) => ({
-        playerId: r.playerId,
-        name: r.playerName,
-        tier: r.tier,
-        price: r.price,
-        isCaptain: !!r.isCaptain,
-      })),
+      roster: (t.roster || []).map((r) => {
+        const fullPlayer = playerById.get(r.playerId);
+        return {
+          playerId: r.playerId,
+          name: r.playerName,
+          tier: r.tier,
+          price: r.price,
+          isCaptain: !!r.isCaptain,
+          pic: (fullPlayer && fullPlayer.pic) || '',
+          // player.unsold is set the moment a player goes unsold and is
+          // never cleared on a later sale, so if it's still true here they
+          // sold via Fire Sale (possibly after multiple unsold passes),
+          // not their original tier round.
+          round: (fullPlayer && fullPlayer.unsold) ? 'Fire Sale' : r.tier,
+        };
+      }),
     }));
 
     const doc = await LockedRoster.findOneAndUpdate(
@@ -276,6 +287,73 @@ router.get('/standings', requireRevealedOrTd, async (req, res) => {
     res.json({ pools: standings, tiered });
   } catch (err) {
     res.status(500).json({ error: 'Failed to compute standings' });
+  }
+});
+
+// Player profile: privacy-scoped to the CURRENT tournament's roster (a
+// player not in this tournament can't be looked up from here, even if
+// they exist in some other tournament's LockedRoster), but once that
+// check passes, their returned history spans every tournament they've
+// ever been locked into \u2014 same idea as a season-spanning player card,
+// just aggregated from LockedRoster snapshots rather than a separately
+// maintained player table, so a future tournament just needs its own
+// lock to show up here automatically, no extra sync step.
+router.get('/player/:name', requireRevealedOrTd, async (req, res) => {
+  try {
+    const wanted = decodeURIComponent(req.params.name || '').trim().toLowerCase();
+    if (!wanted) return res.status(400).json({ error: 'Player name required' });
+
+    const current = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+    if (!current) return res.status(404).json({ error: 'Rosters not locked for this tournament yet' });
+
+    let matchInCurrent = null;
+    let matchTeamName = null;
+    (current.teams || []).forEach((t) => {
+      (t.roster || []).forEach((p) => {
+        if (p.name.trim().toLowerCase() === wanted) { matchInCurrent = p; matchTeamName = t.name; }
+      });
+    });
+    if (!matchInCurrent) {
+      // Not part of THIS tournament \u2014 refuse, even if they exist in some
+      // other tournament's locked roster. This is the actual privacy
+      // boundary: what's browsable/lookup-able is scoped per tournament.
+      return res.status(404).json({ error: 'Player not found in this tournament' });
+    }
+
+    const allLocked = await LockedRoster.find({}).lean();
+    const configs = await TournamentConfig.find({}).lean();
+    const cfgById = new Map(configs.map((c) => [c.tournamentId, c]));
+
+    const history = [];
+    allLocked.forEach((doc) => {
+      (doc.teams || []).forEach((t) => {
+        (t.roster || []).forEach((p) => {
+          if (p.name.trim().toLowerCase() !== wanted) return;
+          const cfg = cfgById.get(doc.tournamentId);
+          history.push({
+            tournamentId: doc.tournamentId,
+            tournamentName: (cfg && cfg.name) || doc.tournamentId,
+            date: (cfg && cfg.date) || '',
+            teamName: t.name,
+            tier: p.tier,
+            price: p.price,
+            round: p.round || p.tier,
+            isCaptain: !!p.isCaptain,
+          });
+        });
+      });
+    });
+    history.sort((a, b) => (a.date < b.date ? 1 : -1)); // most recent first, best-effort given date is a display string not a real sort key
+
+    res.json({
+      name: matchInCurrent.name,
+      pic: matchInCurrent.pic || '',
+      currentTeam: matchTeamName,
+      history,
+    });
+  } catch (err) {
+    console.error('GET /tournament/player/:name error:', err);
+    res.status(500).json({ error: 'Failed to load player profile' });
   }
 });
 

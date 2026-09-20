@@ -15,6 +15,8 @@ const LockedPlayerSchema = new mongoose.Schema(
     tier:     { type: String, required: true },
     price:    { type: Number, required: true },
     isCaptain: { type: Boolean, default: false },
+    pic:      { type: String, default: '' },   // captured at lock time from the draft's player pool, not the team roster entry (which doesn't carry it)
+    round:    { type: String, default: '' },   // the tier round they sold in, or "Fire Sale" if they went unsold at least once first
   },
   { _id: false }
 );

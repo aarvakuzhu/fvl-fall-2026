@@ -146,6 +146,24 @@ a.link:hover{text-decoration:underline;}
 .team-roster-row:last-child{border-bottom:none;}
 .team-roster-row.is-captain{color:var(--gold);font-weight:700;}
 .team-roster-row .tier-tag{font-size:0.6rem;letter-spacing:0.5px;color:var(--text2);text-transform:uppercase;flex-shrink:0;}
+.team-roster-row{cursor:pointer;}
+.team-roster-row:hover{background:rgba(var(--fg-rgb,240,192,64),0.06);border-radius:4px;}
+
+.profile-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.profile-backdrop.active{display:flex;}
+.profile-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);max-width:440px;width:100%;max-height:85vh;overflow-y:auto;padding:26px;position:relative;}
+.profile-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer;line-height:1;}
+.profile-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;object-position:top;display:block;margin:0 auto 12px;border:2px solid var(--gold);}
+.profile-photo-fallback{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--surface2);margin:0 auto 12px;border:2px solid var(--border2);}
+.profile-name{font-family:var(--fd);font-size:1.7rem;letter-spacing:1px;color:var(--gold);text-align:center;line-height:1;}
+.profile-team{font-family:var(--fu);font-size:0.82rem;color:var(--text2);text-align:center;margin-top:4px;}
+.profile-history-label{font-family:var(--fu);font-size:0.68rem;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-top:22px;margin-bottom:8px;border-bottom:1px solid var(--border2);padding-bottom:6px;}
+.profile-history-item{background:var(--surface2);border-radius:6px;padding:10px 12px;margin-bottom:8px;font-family:var(--fu);font-size:0.8rem;}
+.profile-history-item .th-name{font-weight:700;color:var(--text);}
+.profile-history-item .th-date{color:var(--muted);font-size:0.7rem;float:right;}
+.profile-history-item .th-row{display:flex;justify-content:space-between;margin-top:4px;color:var(--text2);}
+.profile-history-item .th-row b{color:var(--text);}
+.profile-captain-badge{display:inline-block;background:rgba(240,192,64,0.15);color:var(--gold);font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:6px;}
 .edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
 .edit-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
 .edit-row input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--fu);font-size:0.82rem;padding:6px 9px;min-width:0;}
@@ -272,6 +290,14 @@ a.link:hover{text-decoration:underline;}
     </div>
     <div id="teams-no-results" class="hint" style="display:none;text-align:center;padding:20px;">No matches.</div>
     <div id="teams-grid" class="teams-grid"></div>
+  </div>
+
+  <!-- PLAYER PROFILE MODAL -->
+  <div id="profile-backdrop" class="profile-backdrop">
+    <div class="profile-box">
+      <button class="profile-close" id="profile-close-btn">✕</button>
+      <div id="profile-body">Loading&hellip;</div>
+    </div>
   </div>
 
   <!-- SCHEDULE -->
@@ -511,15 +537,76 @@ function renderTeamsRosters() {
     const roster = (t.roster || []).slice().sort((a, b) => (b.isCaptain ? 1 : 0) - (a.isCaptain ? 1 : 0));
     const rows = roster.map((p) => {
       const isMatch = search && p.name.toLowerCase().includes(search);
-      return `<div class="team-roster-row${p.isCaptain ? ' is-captain' : ''}"${isMatch ? ' style="background:rgba(240,192,64,0.12);border-radius:4px;padding-left:6px;"' : ''}>
+      return `<div class="team-roster-row${p.isCaptain ? ' is-captain' : ''}" data-player="${p.name.replace(/"/g,'&quot;')}"${isMatch ? ' style="background:rgba(240,192,64,0.12);border-radius:4px;padding-left:6px;"' : ''}>
          <span>${p.isCaptain ? '\u2605 ' : ''}${p.name}</span>
          <span class="tier-tag">${p.tier}</span>
        </div>`;
     }).join('');
     return `<div class="team-card"><h3>${t.name}</h3>${rows}</div>`;
   }).join('');
+  gridEl.querySelectorAll('[data-player]').forEach((row) => {
+    row.addEventListener('click', () => openPlayerProfile(row.dataset.player));
+  });
 }
 document.getElementById('teams-search').addEventListener('input', renderTeamsRosters);
+
+/* ── Player Profile ── */
+async function openPlayerProfile(name) {
+  const backdrop = document.getElementById('profile-backdrop');
+  const bodyEl = document.getElementById('profile-body');
+  bodyEl.innerHTML = 'Loading&hellip;';
+  backdrop.classList.add('active');
+  try {
+    const headers = TD_TOKEN ? { 'x-td-token': TD_TOKEN } : {};
+    const res = await fetch('/api/tournament/player/' + encodeURIComponent(name), { headers });
+    if (!res.ok) {
+      bodyEl.innerHTML = '<p class="hint" style="text-align:center;">Couldn\u2019t load this profile.</p>';
+      return;
+    }
+    const profile = await res.json();
+    renderPlayerProfile(profile);
+  } catch (e) {
+    bodyEl.innerHTML = '<p class="hint" style="text-align:center;">Couldn\u2019t load this profile.</p>';
+  }
+}
+
+function renderPlayerProfile(profile) {
+  const photoHtml = profile.pic
+    ? `<img class="profile-photo" id="profile-photo-img" src="${profile.pic}" alt="${profile.name}">`
+    : `<div class="profile-photo-fallback" id="profile-photo-fallback">🏐</div>`;
+
+  const historyHtml = (profile.history || []).map((h) => `
+    <div class="profile-history-item">
+      <span class="th-name">${h.tournamentName}</span><span class="th-date">${h.date || ''}</span>
+      <div class="th-row"><span>Team</span><b>${h.teamName}${h.isCaptain ? '<span class="profile-captain-badge">\u2605 Captain</span>' : ''}</b></div>
+      <div class="th-row"><span>Category</span><b>${h.tier}</b></div>
+      <div class="th-row"><span>Sale Price</span><b>$${h.price}</b></div>
+      <div class="th-row"><span>Round</span><b>${h.round}</b></div>
+    </div>
+  `).join('');
+
+  document.getElementById('profile-body').innerHTML = `
+    ${photoHtml}
+    <div class="profile-name">${profile.name}</div>
+    <div class="profile-team">Currently with ${profile.currentTeam}</div>
+    <div class="profile-history-label">Tournament History (${(profile.history || []).length})</div>
+    ${historyHtml || '<p class="hint">No history yet.</p>'}
+  `;
+
+  const photoImg = document.getElementById('profile-photo-img');
+  if (photoImg) {
+    photoImg.addEventListener('error', () => {
+      photoImg.outerHTML = '<div class="profile-photo-fallback">🏐</div>';
+    });
+  }
+}
+
+document.getElementById('profile-close-btn').addEventListener('click', () => {
+  document.getElementById('profile-backdrop').classList.remove('active');
+});
+document.getElementById('profile-backdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'profile-backdrop') document.getElementById('profile-backdrop').classList.remove('active');
+});
 
 function renderPublicLanding() {
   if (!CFG) return;
