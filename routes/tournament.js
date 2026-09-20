@@ -70,7 +70,7 @@ router.post('/lock', requireTd, async (req, res) => {
   }
 });
 
-router.get('/locked', requireTd, async (req, res) => {
+router.get('/locked', requireRevealedOrTd, async (req, res) => {
   try {
     const doc = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID }).lean();
     if (!doc) return res.json({ locked: false });

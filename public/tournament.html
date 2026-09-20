@@ -139,6 +139,13 @@ a.link:hover{text-decoration:underline;}
 .mini-round{font-family:var(--fu);font-size:0.66rem;color:var(--text);padding:3px 0;border-top:1px dashed var(--border);}
 .mini-round:first-of-type{border-top:none;}
 .mini-round b{color:var(--cyan);font-weight:700;}
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:16px;}
+.team-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.team-card h3{font-family:var(--fd);font-size:1.3rem;color:var(--gold);letter-spacing:1px;margin-bottom:10px;line-height:1;}
+.team-roster-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed var(--border);font-family:var(--fu);font-size:0.8rem;}
+.team-roster-row:last-child{border-bottom:none;}
+.team-roster-row.is-captain{color:var(--gold);font-weight:700;}
+.team-roster-row .tier-tag{font-size:0.6rem;letter-spacing:0.5px;color:var(--text2);text-transform:uppercase;flex-shrink:0;}
 .edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
 .edit-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
 .edit-row input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--fu);font-size:0.82rem;padding:6px 9px;min-width:0;}
@@ -177,7 +184,7 @@ a.link:hover{text-decoration:underline;}
     <div class="btn-row" style="margin-top:14px;">
       <button class="btn gold" id="public-schedule-btn">🏐 View Schedule</button>
       <button class="btn outline" id="public-standings-btn">🏆 View Standings</button>
-      <a class="btn outline" href="/draft.html" style="text-decoration:none;">👥 Teams &amp; Rosters</a>
+      <button class="btn outline" id="public-teams-btn">👥 Teams &amp; Rosters</button>
       <button class="btn outline" id="public-flyer-btn">📋 View Flyer</button>
     </div>
     <p style="text-align:center;margin-top:20px;">
@@ -198,6 +205,7 @@ a.link:hover{text-decoration:underline;}
     <div class="menu-grid">
       <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
       <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
+      <button class="menu-card" data-view="teams"><div class="icon">👥</div><div class="title">Teams &amp; Rosters</div><div class="sub">Every team, captain to last pick</div></button>
       <button class="menu-card" id="menu-standings-btn"><div class="icon">🏆</div><div class="title">Standings</div><div class="sub">Pool ranks &amp; bracket results</div></button>
       <button class="menu-card td-only" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
     </div>
@@ -253,6 +261,16 @@ a.link:hover{text-decoration:underline;}
   </div>
 
   <!-- POOL ALLOCATION -->
+  <!-- TEAMS & ROSTERS -->
+  <div id="view-teams" class="view">
+    <button class="back-btn" data-back>← Menu</button>
+    <h2 class="pagehead">Teams &amp; Rosters</h2>
+    <div class="card" id="teams-empty" style="display:none;">
+      <p class="hint">Rosters aren\u2019t locked in yet — check back once the draft wraps up.</p>
+    </div>
+    <div id="teams-grid" class="teams-grid"></div>
+  </div>
+
   <!-- SCHEDULE -->
   <div id="view-schedule" class="view">
     <button class="back-btn" data-back>← Menu</button>
@@ -448,6 +466,7 @@ document.getElementById('menu-standings-btn').addEventListener('click', () => {
   window.open('/standings.html?td=' + encodeURIComponent(TD_TOKEN || ''), '_blank');
 });
 document.getElementById('public-schedule-btn').addEventListener('click', () => showView('schedule'));
+document.getElementById('public-teams-btn').addEventListener('click', () => showView('teams'));
 document.getElementById('public-standings-btn').addEventListener('click', () => {
   window.open('/standings.html', '_blank');
 });
@@ -455,6 +474,29 @@ document.getElementById('public-flyer-btn').addEventListener('click', () => view
 document.querySelectorAll('[data-back]').forEach(btn => {
   btn.addEventListener('click', () => showView(IS_TD ? 'menu' : 'public-landing'));
 });
+
+function renderTeamsRosters() {
+  const emptyEl = document.getElementById('teams-empty');
+  const gridEl  = document.getElementById('teams-grid');
+  if (!LOCKED || !LOCKED.locked || !LOCKED.teams || !LOCKED.teams.length) {
+    emptyEl.style.display = '';
+    gridEl.innerHTML = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  const teams = LOCKED.teams.slice().sort((a, b) => a.name.localeCompare(b.name));
+  gridEl.innerHTML = teams.map((t) => {
+    const roster = (t.roster || []).slice().sort((a, b) => (b.isCaptain ? 1 : 0) - (a.isCaptain ? 1 : 0));
+    const rows = roster.map((p) =>
+      `<div class="team-roster-row${p.isCaptain ? ' is-captain' : ''}">
+         <span>${p.isCaptain ? '\u2605 ' : ''}${p.name}</span>
+         <span class="tier-tag">${p.tier}</span>
+       </div>`
+    ).join('');
+    return `<div class="team-card"><h3>${t.name}</h3>${rows}</div>`;
+  }).join('');
+}
 
 function renderPublicLanding() {
   if (!CFG) return;
@@ -489,19 +531,18 @@ function renderPublicLanding() {
 /* ── Data loading ── */
 async function loadAll() {
   const headers = TD_TOKEN ? { 'x-td-token': TD_TOKEN } : {};
-  const fetches = [
+  const [cfgRes, schedRes, lockedRes] = await Promise.all([
     fetch('/api/tournament/config', { headers }),
     fetch('/api/tournament/schedule', { headers }),
-  ];
-  if (IS_TD) fetches.push(fetch('/api/tournament/locked', { headers })); // TD-only endpoint, skip entirely for public viewers
-
-  const [cfgRes, schedRes, lockedRes] = await Promise.all(fetches);
+    fetch('/api/tournament/locked', { headers }), // public once revealed, same as config/schedule
+  ]);
   CFG    = await cfgRes.json();
   SCHED  = await schedRes.json();
-  LOCKED = lockedRes ? await lockedRes.json() : null;
+  LOCKED = lockedRes.ok ? await lockedRes.json() : null;
 
   renderFormat();
   renderPublicLanding();
+  renderTeamsRosters();
   if (IS_TD) renderMiniStatus();
   renderScheduleFilters();
   renderScheduleTable();
