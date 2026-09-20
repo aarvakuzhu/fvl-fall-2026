@@ -60,27 +60,18 @@ h1{font-family:var(--fd);font-size:clamp(2.2rem,7vw,3.2rem);letter-spacing:2px;c
 .tagline{font-family:var(--fu);font-size:0.95rem;color:var(--text2);text-align:center;margin-top:10px;}
 
 .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-top:36px;}
-.hub-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;cursor:pointer;transition:all .15s;text-align:left;}
+.hub-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;transition:all .15s;text-align:left;text-decoration:none;color:inherit;display:block;}
 .hub-card:hover{border-color:var(--gold);transform:translateY(-2px);}
 .hub-card.disabled{cursor:default;opacity:0.55;}
 .hub-card.disabled:hover{border-color:var(--border);transform:none;}
 .hub-card .icon{font-size:2.1rem;margin-bottom:10px;}
 .hub-card .title{font-family:var(--fd);font-size:1.5rem;letter-spacing:1px;color:var(--text);}
 .hub-card .desc{font-family:var(--fu);font-size:0.78rem;color:var(--text2);margin-top:4px;line-height:1.4;}
-.hub-card .stat{font-family:var(--fu);font-size:0.82rem;color:var(--gold);margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);min-height:1.2em;}
-.hub-card .stat.muted{color:var(--muted);}
-
-.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px;}
-.modal-backdrop.active{display:flex;}
-.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:24px;}
-.modal-box h2{font-family:var(--fd);font-size:1.6rem;color:var(--gold);letter-spacing:1px;margin-bottom:14px;}
-.modal-box .close-btn{float:right;background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer;line-height:1;}
-.modal-body{font-family:var(--fu);font-size:0.88rem;color:var(--text);line-height:1.7;}
-.modal-body table{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82rem;}
-.modal-body th{text-align:left;padding:4px 6px;font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);}
-.modal-body td{padding:4px 6px;border-bottom:1px dashed var(--border);}
-.modal-footer{margin-top:18px;text-align:center;}
-.btn{font-family:var(--fu);font-weight:600;font-size:0.8rem;letter-spacing:1px;text-transform:uppercase;padding:10px 20px;border-radius:6px;border:1px solid var(--gold);background:var(--gold);color:#241a02;cursor:pointer;text-decoration:none;display:inline-block;}
+.hub-card .widget{font-family:var(--fu);font-size:0.8rem;color:var(--text);margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);min-height:1.4em;line-height:1.6;}
+.hub-card .widget.muted{color:var(--muted);}
+.hub-card .widget b{color:var(--gold);}
+.hub-card .widget .row{display:flex;justify-content:space-between;gap:8px;}
+.hub-card .go{font-family:var(--fu);font-size:0.7rem;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-top:12px;}
 
 #theme-toggle{position:fixed;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10;}
 #theme-toggle:hover{background:var(--surface3);transform:scale(1.06);}
@@ -96,43 +87,35 @@ h1{font-family:var(--fd);font-size:clamp(2.2rem,7vw,3.2rem);letter-spacing:2px;c
   <p class="tagline">Draft. Tournament. Everything in one place.</p>
 
   <div class="hub-grid">
-    <div class="hub-card" data-modal="draft">
+    <a class="hub-card" href="/draft.html">
       <div class="icon">🏐</div>
       <div class="title">Draft</div>
       <div class="desc">Rosters, captains, and how teams came together.</div>
-      <div class="stat muted" id="stat-draft">Loading…</div>
-    </div>
+      <div class="widget muted" id="widget-draft">Loading…</div>
+      <div class="go">View Rosters →</div>
+    </a>
 
-    <div class="hub-card" data-modal="tournament">
+    <a class="hub-card" href="/tournament.html">
       <div class="icon">🏟</div>
       <div class="title">Tournament</div>
       <div class="desc">Format, pool draw, and schedule.</div>
-      <div class="stat muted" id="stat-tournament">Loading…</div>
-    </div>
+      <div class="widget muted" id="widget-tournament">Loading…</div>
+      <div class="go">View Tournament →</div>
+    </a>
 
-    <div class="hub-card" data-modal="standings">
+    <a class="hub-card" href="/standings.html">
       <div class="icon">🏆</div>
       <div class="title">Standings</div>
       <div class="desc">Pool rankings and bracket results.</div>
-      <div class="stat muted" id="stat-standings">Loading…</div>
-    </div>
+      <div class="widget muted" id="widget-standings">Loading…</div>
+      <div class="go">View Standings →</div>
+    </a>
 
     <div class="hub-card disabled">
       <div class="icon">📚</div>
       <div class="title">Resources</div>
       <div class="desc">League rules, contacts, and more.</div>
-      <div class="stat muted">Coming soon</div>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-backdrop">
-  <div class="modal-box">
-    <button class="close-btn" id="modal-close">✕</button>
-    <h2 id="modal-title"></h2>
-    <div class="modal-body" id="modal-body"></div>
-    <div class="modal-footer">
-      <a class="btn" id="modal-full-link" href="#">Open Full Page →</a>
+      <div class="widget muted">Coming soon</div>
     </div>
   </div>
 </div>
@@ -155,111 +138,62 @@ function initThemeToggle() {
 }
 initThemeToggle();
 
-/* ── Modal plumbing ── */
-function openModal(title, bodyHtml, fullLinkHref) {
-  document.getElementById('modal-title').textContent = title;
-  document.getElementById('modal-body').innerHTML = bodyHtml;
-  document.getElementById('modal-full-link').href = fullLinkHref;
-  document.getElementById('modal-backdrop').classList.add('active');
-}
-document.getElementById('modal-close').addEventListener('click', () => {
-  document.getElementById('modal-backdrop').classList.remove('active');
-});
-document.getElementById('modal-backdrop').addEventListener('click', (e) => {
-  if (e.target.id === 'modal-backdrop') document.getElementById('modal-backdrop').classList.remove('active');
-});
-
 /* ── Draft ── */
-let draftData = null;
 async function loadDraftWidget() {
+  const el = document.getElementById('widget-draft');
   try {
     const res = await fetch('/api/state/fvl-fall-2026');
     const body = await res.json();
-    draftData = body && body.data;
-    const teams = (draftData && draftData.teams) || [];
-    document.getElementById('stat-draft').textContent = teams.length
-      ? teams.length + ' teams drafted'
-      : 'Draft not started yet';
-    document.getElementById('stat-draft').classList.remove('muted');
+    const teams = (body && body.data && body.data.teams) || [];
+    if (!teams.length) { el.textContent = 'Draft not started yet'; return; }
+    const names = teams.map(t => t.name);
+    const shown = names.slice(0, 4).join(', ');
+    const more = names.length > 4 ? ` +${names.length - 4} more` : '';
+    el.innerHTML = `<b>${teams.length} teams</b> drafted<br><span style="color:var(--text2);">${shown}${more}</span>`;
+    el.classList.remove('muted');
   } catch (e) {
-    document.getElementById('stat-draft').textContent = 'Unavailable right now';
+    el.textContent = 'Unavailable right now';
   }
-}
-function showDraftModal() {
-  const teams = (draftData && draftData.teams) || [];
-  const body = teams.length
-    ? '<table><thead><tr><th>Team</th><th>Captain</th></tr></thead><tbody>' +
-      teams.map(t => {
-        const captain = (t.roster || []).find(r => r.isCaptain);
-        return `<tr><td>${t.name}</td><td>${captain ? captain.playerName : '—'}</td></tr>`;
-      }).join('') + '</tbody></table>'
-    : '<p>The draft hasn\u2019t started yet — check back once teams are set.</p>';
-  openModal('🏐 Draft', body, '/draft.html');
 }
 
 /* ── Tournament ── */
-let tournamentCfg = null;
 async function loadTournamentWidget() {
+  const el = document.getElementById('widget-tournament');
   try {
     const res = await fetch('/api/tournament/config');
-    if (!res.ok) { document.getElementById('stat-tournament').textContent = 'Details coming soon'; return; }
-    tournamentCfg = await res.json();
-    document.getElementById('stat-tournament').textContent = tournamentCfg
-      ? (tournamentCfg.date || 'Format set') + (tournamentCfg.venue ? ' · ' + tournamentCfg.venue : '')
-      : 'Details coming soon';
-    document.getElementById('stat-tournament').classList.remove('muted');
+    if (!res.ok) { el.textContent = 'Details coming soon'; return; }
+    const cfg = await res.json();
+    if (!cfg) { el.textContent = 'Details coming soon'; return; }
+    const tiers = (cfg.tiers || []).slice().sort((a,b) => a.order - b.order).map(t => t.name).join(' / ');
+    el.innerHTML = `<b>${cfg.date || 'TBD'}</b>${cfg.venue ? ' · ' + cfg.venue : ''}<br><span style="color:var(--text2);">${cfg.teamCount || '?'} teams · ${cfg.poolCount || '?'} pools → ${tiers}</span>`;
+    el.classList.remove('muted');
   } catch (e) {
-    document.getElementById('stat-tournament').textContent = 'Unavailable right now';
+    el.textContent = 'Unavailable right now';
   }
-}
-function showTournamentModal() {
-  const cfg = tournamentCfg;
-  const body = cfg
-    ? `<p><b>${cfg.name || 'Tournament'}</b><br>${cfg.date || ''} ${cfg.venue ? '· ' + cfg.venue : ''}</p>
-       <p style="margin-top:10px;">${cfg.teamCount || '?'} teams, ${cfg.poolCount || '?'} pools of ${cfg.poolSize || '?'} \u2192
-       ${(cfg.tiers || []).slice().sort((a,b)=>a.order-b.order).map(t=>t.name).join(' / ')} tiered bracket.</p>`
-    : '<p>Tournament details aren\u2019t public yet — check back soon.</p>';
-  openModal('🏟 Tournament', body, '/tournament.html');
 }
 
 /* ── Standings ── */
-let standingsData = null;
 async function loadStandingsWidget() {
+  const el = document.getElementById('widget-standings');
   try {
     const res = await fetch('/api/tournament/standings');
-    if (!res.ok) { document.getElementById('stat-standings').textContent = 'Not started yet'; return; }
-    standingsData = await res.json();
-    const pools = standingsData.pools || {};
-    const poolNames = Object.keys(pools);
-    if (!poolNames.length) {
-      document.getElementById('stat-standings').textContent = 'Not started yet';
-      return;
-    }
-    const matches = (standingsData.tiered || []);
-    const anyPoolPlayed = poolNames.some(p => pools[p].rows.some(r => r.played > 0));
-    document.getElementById('stat-standings').textContent = anyPoolPlayed ? 'Pool play underway' : 'Pools set, play starts soon';
-    document.getElementById('stat-standings').classList.remove('muted');
+    if (!res.ok) { el.textContent = 'Not started yet'; return; }
+    const data = await res.json();
+    const pools = data.pools || {};
+    const poolNames = Object.keys(pools).sort();
+    if (!poolNames.length) { el.textContent = 'Not started yet'; return; }
+    const anyPlayed = poolNames.some(p => pools[p].rows.some(r => r.played > 0));
+    if (!anyPlayed) { el.innerHTML = '<span style="color:var(--text2);">Pools set — play starts soon</span>'; el.classList.remove('muted'); return; }
+    const leaders = poolNames.map(p => {
+      const top = pools[p].rows.find(r => r.rank === 1);
+      return top ? `Pool ${p}: <b>${top.teamName}</b>` : '';
+    }).filter(Boolean).join('<br>');
+    el.innerHTML = leaders || '<span style="color:var(--text2);">Pool play underway</span>';
+    el.classList.remove('muted');
   } catch (e) {
-    document.getElementById('stat-standings').textContent = 'Unavailable right now';
+    el.textContent = 'Unavailable right now';
   }
 }
-function showStandingsModal() {
-  const pools = (standingsData && standingsData.pools) || {};
-  const poolNames = Object.keys(pools).sort();
-  const body = poolNames.length
-    ? poolNames.map(p => {
-        const rows = pools[p].rows;
-        return `<p style="margin-top:8px;"><b>Pool ${p}</b>${pools[p].complete ? ' (final)' : ''}</p>` +
-          '<table><tbody>' + rows.map(r => `<tr><td>${r.rank}. ${r.teamName}</td><td>${r.wins}-${r.losses}</td></tr>`).join('') + '</tbody></table>';
-      }).join('')
-    : '<p>Standings will appear once pool play begins.</p>';
-  openModal('🏆 Standings', body, '/standings.html');
-}
-
-/* ── Wire cards ── */
-document.querySelector('[data-modal="draft"]').addEventListener('click', showDraftModal);
-document.querySelector('[data-modal="tournament"]').addEventListener('click', showTournamentModal);
-document.querySelector('[data-modal="standings"]').addEventListener('click', showStandingsModal);
 
 loadDraftWidget();
 loadTournamentWidget();
