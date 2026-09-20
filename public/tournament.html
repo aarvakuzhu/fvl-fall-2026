@@ -191,7 +191,6 @@ a.link:hover{text-decoration:underline;}
       <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
       <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
       <button class="menu-card" id="menu-standings-btn"><div class="icon">🏆</div><div class="title">Standings</div><div class="sub">Pool ranks &amp; bracket results</div></button>
-      <button class="menu-card td-only" data-view="rosters"><div class="icon">🔒</div><div class="title">Final Rosters</div><div class="sub">Lock for Scores/Standings</div></button>
       <button class="menu-card td-only" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
     </div>
   </div>
@@ -293,17 +292,6 @@ a.link:hover{text-decoration:underline;}
   </div>
 
   <!-- FINAL ROSTERS -->
-  <div id="view-rosters" class="view">
-    <button class="back-btn" data-back>← Menu</button>
-    <h2 class="pagehead">Final Rosters</h2>
-    <div class="card">
-      <p class="hint">A separate, later step — once the auction is fully complete. Snapshots final rosters for Scores/Standings. Has no effect on pool allocation or the schedule.</p>
-      <div class="btn-row">
-        <button class="btn danger" id="lock-rosters-btn">🔒 Lock Final Rosters</button>
-      </div>
-    </div>
-  </div>
-
   <!-- REVEAL -->
   <div id="view-reveal" class="view">
     <button class="back-btn" data-back>← Menu</button>
@@ -782,14 +770,6 @@ async function enterScore(matchId) {
 }
 
 /* ── Actions ── */
-async function lockRosters() {
-  if (!confirm('Snapshot current teams/rosters as final? This does not affect pool allocation or the schedule, and resetting the draft later will not affect this snapshot.')) return;
-  const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
-  const body = await res.json();
-  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
-  toast('Locked ' + body.teams + ' teams.');
-  loadAll();
-}
 
 async function toggleReveal() {
   const cfgRes = await fetch('/api/tournament/config', { headers: { 'x-td-token': TD_TOKEN } });
@@ -812,7 +792,6 @@ function viewFlyer() {
 
 document.getElementById('gate-btn').addEventListener('click', submitGate);
 document.getElementById('gate-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitGate(); });
-document.getElementById('lock-rosters-btn').addEventListener('click', lockRosters);
 document.getElementById('reveal-btn').addEventListener('click', toggleReveal);
 document.getElementById('view-flyer-btn').addEventListener('click', viewFlyer);
 

@@ -1210,6 +1210,19 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
     </div>
 
     <div class="rules-section">
+      <div class="rules-section-title">Final Rosters</div>
+      <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;max-width:560px;">
+        A separate, later step — once the auction is fully complete. Snapshots current teams/rosters as final,
+        for Scores/Standings to use. Has no effect on pool allocation or the schedule, and resetting the draft
+        afterward will not affect this snapshot. Re-locking later overwrites the previous snapshot.
+      </p>
+      <div id="admin-rosters-status" style="font-family:var(--fu);font-size:0.85rem;color:var(--text2);margin-bottom:10px;">Loading&hellip;</div>
+      <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="admin-lock-rosters-btn" class="btn btn-danger" style="padding:9px 18px;">🔒 Lock Final Rosters</button>
+      </div>
+    </div>
+
+    <div class="rules-section">
       <div class="rules-section-title">Tournament Link</div>
       <p style="font-family:var(--fu);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;max-width:560px;">
         Schedule, standings, flyer, and editing the format live on the
@@ -4137,6 +4150,7 @@ function showAdmin() {
   loadAdminStats();
   renderAdminBudgetPanel();
   loadAdminPoolsStatus();
+  loadAdminRostersStatus();
   loadAdminTournamentLinkStatus();
 }
 
@@ -4356,6 +4370,42 @@ async function toggleLockPoolsFromAdmin() {
   }
 }
 
+/* ── ADMIN: Final Rosters (lock snapshot for Scores/Standings) ── */
+
+async function loadAdminRostersStatus() {
+  const statusEl = document.getElementById('admin-rosters-status');
+  if (!statusEl) return;
+  statusEl.textContent = 'Loading…';
+  try {
+    const res = await fetch('/api/tournament/locked', { headers: { 'x-td-token': TD_TOKEN || '' } });
+    const locked = await res.json();
+    statusEl.innerHTML = locked && locked.locked
+      ? '🔒 <strong style="color:var(--text);">Locked</strong> — ' + locked.teams.length + ' teams, at ' + new Date(locked.lockedAt).toLocaleString()
+      : '⚪ Not locked yet';
+  } catch (e) {
+    statusEl.textContent = 'Could not load roster-lock status.';
+  }
+}
+
+async function lockRostersFromAdmin() {
+  if (!IS_TD || !TD_TOKEN) { toast('TD login required.', 'danger'); return; }
+  openModal(
+    'Lock Final Rosters',
+    'This snapshots the current official draft\u2019s teams and rosters as final, for Scores/Standings to use later. Resetting the draft afterward will NOT affect this snapshot. Has no effect on pool allocation or the schedule. Re-locking later overwrites this snapshot. Continue?',
+    async function() {
+      try {
+        const res = await fetch('/api/tournament/lock', { method: 'POST', headers: { 'x-td-token': TD_TOKEN } });
+        const body = await res.json();
+        if (!res.ok) { toast('⚠ Lock failed: ' + (body.error || res.status), 'danger'); return; }
+        toast('✓ Locked ' + body.teams + ' teams.', 'success');
+        loadAdminRostersStatus();
+      } catch (e) {
+        toast('⚠ Lock failed — check your connection.', 'danger');
+      }
+    }
+  );
+}
+
 /* ── ADMIN: Tournament Link (publish/unpublish shortcut) ── */
 
 async function loadAdminTournamentLinkStatus() {
@@ -4560,6 +4610,7 @@ function attachEventListeners() {
   document.getElementById('admin-budget-apply-btn').addEventListener('click', applyBudgetAdjustment);
   document.getElementById('admin-randomize-pools-btn').addEventListener('click', randomizePoolsFromAdmin);
   document.getElementById('admin-lock-pools-btn').addEventListener('click', toggleLockPoolsFromAdmin);
+  document.getElementById('admin-lock-rosters-btn').addEventListener('click', lockRostersFromAdmin);
   document.getElementById('admin-toggle-reveal-btn').addEventListener('click', toggleTournamentReveal);
   document.getElementById('admin-copy-link-btn').addEventListener('click', copyTournamentLink);
 
