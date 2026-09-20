@@ -170,6 +170,10 @@ a.link:hover{text-decoration:underline;}
   <!-- PUBLIC LANDING (shown instead of the menu when not logged in as TD) -->
   <div id="view-public-landing" class="view">
     <div class="card" id="public-summary-card"></div>
+    <div class="card" id="public-pools-card" style="display:none;">
+      <h2>Pool Draw</h2>
+      <div id="public-pools-wrap"></div>
+    </div>
     <div class="btn-row" style="margin-top:14px;">
       <button class="btn gold" id="public-schedule-btn">🏐 View Schedule</button>
       <button class="btn outline" id="public-standings-btn">🏆 View Standings</button>
@@ -465,6 +469,20 @@ function renderPublicLanding() {
       single-elimination bracket. Check the schedule to find your match, or jump straight to standings
       to see how pool play and the bracket are shaping up.
     </p>`;
+
+  const poolsCard = document.getElementById('public-pools-card');
+  if (SCHED && SCHED.pools && SCHED.pools.length) {
+    poolsCard.style.display = '';
+    const byPool = {};
+    SCHED.pools.forEach(p => { (byPool[p.pool] = byPool[p.pool] || []).push(p.teamName); });
+    const poolNames = Object.keys(byPool).sort();
+    document.getElementById('public-pools-wrap').innerHTML =
+      '<div class="stat-row">' +
+      poolNames.map(p => `<div class="stat"><b>Pool ${p}</b>${byPool[p].join('<br>')}</div>`).join('') +
+      '</div>';
+  } else {
+    poolsCard.style.display = 'none';
+  }
 }
 
 /* ── Data loading ── */
