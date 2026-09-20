@@ -98,6 +98,8 @@ a.link{color:var(--cyan);text-decoration:none;}
 a.link:hover{text-decoration:underline;}
 #theme-toggle{position:fixed;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10;}
 #theme-toggle:hover{background:var(--surface3);transform:scale(1.06);}
+#hub-link{position:fixed;top:16px;left:16px;font-family:var(--fu);font-size:0.78rem;color:var(--text2);text-decoration:none;display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:8px 14px;z-index:10;transition:all .15s;}
+#hub-link:hover{color:var(--gold);border-color:var(--gold);}
 
 /* Landing menu */
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:20px;}
@@ -147,6 +149,7 @@ a.link:hover{text-decoration:underline;}
 <body>
 
 <button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">🌙</button>
+<a id="hub-link" href="/">🏠 Hub</a>
 
 <div id="gate" class="gate" style="display:none;">
   <div class="eyebrow">Fowler Volleyball League</div>
