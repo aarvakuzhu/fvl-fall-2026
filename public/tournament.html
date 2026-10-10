@@ -333,6 +333,13 @@ body:not(.is-td) .td-only{display:none!important;}
       <div class="po-preview-label">Preview — first page</div>
       <div class="po-preview"><iframe id="po-preview-frame" title="Scorecard preview" tabindex="-1"></iframe><div class="po-empty" id="po-preview-empty">Nothing to preview</div></div>
       <div class="po-blank">
+        <div class="po-preview-label" style="margin-top:14px;">Printable schedule</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+          <button class="btn outline" id="po-sched-btn">🖨 Print schedule</button>
+        </div>
+        <p class="hint" style="margin-top:6px;">Uses the Court / Phase / Pool / Team / Time filters above. Scored games show their result.</p>
+      </div>
+      <div class="po-blank">
         <div class="po-preview-label" style="margin-top:14px;">Blank scorecards (fill in by hand)</div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
           <input id="po-blank-qty" type="number" min="1" max="40" value="4" style="width:70px;padding:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--fu);">
@@ -360,6 +367,7 @@ body:not(.is-td) .td-only{display:none!important;}
       <p class="hint" style="margin-top:8px;">Locking runs the ranking rules (wins → point differential → points scored → random draw for exact ties) and fills the bracket. Unlock to correct a pool score; locking again re-checks the rules.</p>
     </div>
     <div class="card" id="schedule-card">
+      <div style="margin-bottom:12px;"><button class="btn outline" id="print-schedule-btn">🖨 Print Schedule</button></div>
       <div id="sheet-actions" style="display:none;margin-bottom:12px;">
         <button class="btn outline" id="print-sheets-btn">🖨 Print Scoresheets</button>
       </div>
@@ -1029,11 +1037,11 @@ function buildSheetsHtml(rows, perPage, forPreview) {
   return '<!doctype html><html><head><meta charset="utf-8"><title>Scoresheets</title><style>' + css + '</style></head><body>' + body + '</body></html>';
 }
 
-function printScoresheets(rows, perPage) {
-  if (!rows.length) { toast('No games to print.'); return; }
-  const nums = gameNumbers();
-  rows = rows.map(m => ({ ...m, gameNo: nums[m.matchId] }));
-  const html = buildSheetsHtml(rows, perPage || 1, false).replace('</head>', `<meta name="viewport" content="width=device-width,initial-scale=1"><style>
+// Wraps a built print document (pages as .page blocks) with the screen toolbar + fit-to-width, and opens it
+// as a real blob: document in a new tab. Not a hidden iframe: phone browsers print the whole top-level page
+// and ignore iframes; and not document.write into about:blank, which mobile Chrome can print the opener for.
+function openPrintDoc(html, label) {
+  const out = html.replace('</head>', `<meta name="viewport" content="width=device-width,initial-scale=1"><style>
     .bar{display:none}
     @media screen{
       html,body{background:#7a7f8a!important}
@@ -1041,21 +1049,53 @@ function printScoresheets(rows, perPage) {
       .bar{display:flex;position:fixed;top:0;left:0;right:0;z-index:5;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;background:#10162a;color:#fff;font:600 14px Arial}
       .bar button{background:#f0c040;border:0;border-radius:6px;padding:9px 16px;font:700 14px Arial;cursor:pointer}
       .page{background:#fff;margin:0 auto 14px;box-shadow:0 2px 10px rgba(0,0,0,.4);padding:0.4in;width:8.5in;height:11in}
-      .page.two,.page{height:11in}
+      .page.sched{height:auto;min-height:11in}
     }
     @media print{#wrap{zoom:1!important}.bar{display:none!important}.page{padding:0!important;box-shadow:none!important;margin:0!important;width:auto!important}}
-  </style></head>`).replace('<body>', `<body><div class="bar"><span>${rows.length} scorecard${rows.length === 1 ? '' : 's'} · ${Math.ceil(rows.length / (perPage || 1))} page(s)</span><button onclick="window.print()">🖨 Print</button></div><div id="wrap">`).replace('</body>', `</div><script>
+  </style></head>`).replace('<body>', `<body><div class="bar"><span>${label}</span><button onclick="window.print()">🖨 Print</button></div><div id="wrap">`).replace('</body>', `</div><script>
     function fit(){var vw=Math.min(window.innerWidth,document.documentElement.clientWidth||1e5,screen.width||1e5);var w=(vw-16)/816;document.getElementById('wrap').style.zoom=w<1?w:1;}
     fit();addEventListener('resize',fit);
     if(!matchMedia('(pointer: coarse)').matches){setTimeout(function(){window.print()},500);}
   <\/script></body>`);
-  // A new tab (not a hidden iframe): phone browsers print the whole top-level page and ignore iframes.
-  // Open it as a real document URL (blob:), not a document.write into about:blank, since mobile Chrome
-  // can print the opener instead when asked to print a written-in blank window.
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const url = URL.createObjectURL(new Blob([out], { type: 'text/html' }));
   const w = window.open(url, '_blank');
   if (!w) { toast('Pop-up blocked — allow pop-ups for this site, then tap Print again.'); return; }
   setTimeout(() => URL.revokeObjectURL(url), 300000);
+}
+
+function printScoresheets(rows, perPage) {
+  if (!rows.length) { toast('No games to print.'); return; }
+  const nums = gameNumbers();
+  rows = rows.map(m => ({ ...m, gameNo: nums[m.matchId] }));
+  const html = buildSheetsHtml(rows, perPage || 1, false);
+  openPrintDoc(html, `${rows.length} scorecard${rows.length === 1 ? '' : 's'} · ${Math.ceil(rows.length / (perPage || 1))} page(s)`);
+}
+
+// Printable schedule: one row per game in time order (Game #, time, court, match, teams, referee, score).
+// Unscored games get an empty write-in box; scored games show the result.
+function printSchedule(rows, note) {
+  if (!rows.length) { toast('No games to print.'); return; }
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const nums = gameNumbers();
+  const sorted = rows.slice().sort((a, b) => (a.timeStart < b.timeStart ? -1 : a.timeStart > b.timeStart ? 1 : a.court - b.court));
+  let lastTime = null, band = 0;
+  const body = sorted.map(m => {
+    if (m.timeStart !== lastTime) { band++; lastTime = m.timeStart; }
+    const teams = (m.teamAId === null || m.teamBId === null) ? '<span class="tbd">To be decided</span>' : `${esc(m.teamAName)} <span class="vs">vs</span> ${esc(m.teamBName)}`;
+    const score = m.completed ? `<b>${esc(m.scoreA)} – ${esc(m.scoreB)}</b>` : '';
+    return `<tr class="${band % 2 ? 'a' : 'b'}"><td class="n">${nums[m.matchId] || ''}</td><td class="t">${esc(fmtTime12(m.timeStart))}</td><td class="c">${esc(m.court)}</td><td>${esc(fmtLabel(m.label))}</td><td>${teams}</td><td>${esc(m.refereeTeamName || '')}</td><td class="s">${score}</td></tr>`;
+  }).join('');
+  const sub = [CFG && CFG.date, CFG && CFG.venue].filter(Boolean).map(esc).join(' · ');
+  const css = `@page{size:letter portrait;margin:0.4in}*{box-sizing:border-box}html,body{background:#fff!important;color:#000;margin:0;font-family:Arial,Helvetica,sans-serif}
+  .page.sched{height:auto;overflow:visible;display:block}
+  h1{font-size:18pt;margin:0}.sub{font-size:10pt;color:#444;margin:2px 0 2px}.note{font-size:9pt;color:#555;margin-bottom:8px}
+  table{width:100%;border-collapse:collapse;font-size:10pt;margin-top:8px}thead{display:table-header-group}
+  th{text-align:left;font-size:8pt;letter-spacing:.5px;text-transform:uppercase;color:#333;border-bottom:2px solid #000;padding:5px 6px}
+  td{padding:7px 6px;border-bottom:1px solid #bbb;vertical-align:middle}tr{break-inside:avoid}
+  tr.a td{background:#f2f2f2}.n{width:34px;font-weight:700;text-align:center}.t{width:70px;white-space:nowrap;font-weight:700}.c{width:42px;text-align:center}
+  .s{width:90px;border-left:1px solid #999;text-align:center}.vs{color:#777;font-size:8.5pt}.tbd{color:#777;font-style:italic}`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Schedule</title><style>${css}</style></head><body><div class="page sched"><h1>${esc(CFG && CFG.name || 'Tournament')} — Schedule</h1>${sub ? `<div class="sub">${sub}</div>` : ''}${note ? `<div class="note">${esc(note)}</div>` : ''}<table><thead><tr><th>#</th><th>Time</th><th>Court</th><th>Match</th><th>Teams</th><th>Referee</th><th>Score</th></tr></thead><tbody>${body}</tbody></table></div></body></html>`;
+  openPrintDoc(html, `Schedule · ${sorted.length} game${sorted.length === 1 ? '' : 's'}`);
 }
 
 /* ── Print options modal ── */
@@ -1113,11 +1153,20 @@ document.getElementById('print-close-btn').addEventListener('click', closePrintM
 document.getElementById('po-cancel-btn').addEventListener('click', closePrintModal);
 document.getElementById('print-backdrop').addEventListener('click', (e) => { if (e.target.id === 'print-backdrop') closePrintModal(); });
 document.getElementById('po-print-btn').addEventListener('click', () => { const rows = printModalRows(); closePrintModal(); printScoresheets(rows, Number(document.getElementById('po-layout').value)); });
+document.getElementById('po-sched-btn').addEventListener('click', () => {
+  const saved = [document.getElementById('po-scored').checked, document.getElementById('po-tbd').checked];
+  document.getElementById('po-scored').checked = true; document.getElementById('po-tbd').checked = true;
+  const rows = printModalRows();
+  document.getElementById('po-scored').checked = saved[0]; document.getElementById('po-tbd').checked = saved[1];
+  closePrintModal();
+  printSchedule(rows, '');
+});
 document.getElementById('po-blank-btn').addEventListener('click', () => {
   const n = Math.max(1, Math.min(40, parseInt(document.getElementById('po-blank-qty').value, 10) || 1));
   closePrintModal();
   printScoresheets(Array.from({ length: n }, (_, i) => ({ matchId: 'blank' + i, blank: true })), Number(document.getElementById('po-layout').value));
 });
+document.getElementById('print-schedule-btn').addEventListener('click', () => printSchedule(LAST_SCHED_ROWS, 'Showing the games currently filtered on screen.'));
 document.getElementById('print-sheets-btn').addEventListener('click', openPrintModal);
 document.getElementById('menu-print-btn').addEventListener('click', () => { showView('schedule'); openPrintModal(); });
 
