@@ -219,12 +219,12 @@ function buildTieredSkeleton(opts) {
     let matchId, label, sourceA, sourceB;
     if (roundLabel === 'Semifinal 1') {
       matchId = `${slug}-sf1`; label = `${tierName} Semifinal 1`;
-      sourceA = { type: 'poolRank', pool: 'A', rank };
-      sourceB = { type: 'poolRank', pool: 'B', rank };
+      sourceA = { type: 'tierSeed', rank, seed: 1 };
+      sourceB = { type: 'tierSeed', rank, seed: 4 };
     } else if (roundLabel === 'Semifinal 2') {
       matchId = `${slug}-sf2`; label = `${tierName} Semifinal 2`;
-      sourceA = { type: 'poolRank', pool: 'C', rank };
-      sourceB = { type: 'poolRank', pool: 'D', rank };
+      sourceA = { type: 'tierSeed', rank, seed: 2 };
+      sourceB = { type: 'tierSeed', rank, seed: 3 };
     } else if (roundLabel === 'Third Place') {
       matchId = `${slug}-3rd`; label = `${tierName} Third Place`;
       sourceA = { type: 'semiResult', matchId: `${slug}-sf1`, outcome: 'loser' };

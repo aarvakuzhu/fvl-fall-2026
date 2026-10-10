@@ -75,14 +75,61 @@ function computePoolStandings(pools, matches, opts) {
   return standings;
 }
 
+// Seeds each division (Gold = every pool's #1, Silver = every pool's #2, ...)
+// across pools: wins -> point differential -> points scored -> seeded random
+// draw (flagged). Only available once every pool is final (league locked).
+// Semis are then seed 1 v 4 and seed 2 v 3.
+function computeTierSeedings(standings) {
+  const poolNames = Object.keys(standings);
+  if (!poolNames.length || !poolNames.every((n) => standings[n].complete)) return {};
+  const maxRank = Math.max(...poolNames.map((n) => standings[n].rows.length));
+  const out = {};
+  for (let rank = 1; rank <= maxRank; rank++) {
+    const rows = [];
+    poolNames.forEach((n) => {
+      const r = standings[n].rows.find((x) => x.rank === rank);
+      if (r) rows.push({ ...r, pool: n });
+    });
+    rows.sort((x, y) => (y.wins - x.wins) || (y.diff - x.diff) || (y.pointsFor - x.pointsFor));
+    const key = (r) => r.wins + '|' + r.diff + '|' + r.pointsFor;
+    let i = 0;
+    while (i < rows.length) {
+      let j = i;
+      while (j + 1 < rows.length && key(rows[j + 1]) === key(rows[i])) j++;
+      if (j > i) {
+        const group = rows.slice(i, j + 1);
+        const ids = group.map((r) => r.teamId).sort((a, b) => a - b).join(',');
+        group.forEach((r) => { r._h = crypto.createHash('sha1').update('tier' + rank + '#' + key(r) + '#' + ids + '#' + r.teamId).digest('hex'); });
+        group.sort((x, y) => (x._h < y._h ? -1 : 1));
+        group.forEach((r, k) => {
+          rows[i + k] = r;
+          delete r._h;
+          r.randomTie = true;
+          r.tieNote = 'Tied with ' + group.filter((o) => o !== r).map((o) => o.teamName).join(' & ') + ' on wins, point differential and points scored \u2014 seed decided by random draw.';
+        });
+      }
+      i = j + 1;
+    }
+    rows.forEach((r, k) => { r.seed = k + 1; });
+    out[rank] = rows;
+  }
+  return out;
+}
+
 // Resolves as many tiered-bracket slots as currently possible, given pool
 // standings and any completed semi/3rd/final results. Safe to call
 // repeatedly (idempotent) — only fills in what's newly resolvable, leaves
 // everything else untouched.
 function resolveTieredMatches(matches, standings) {
+  const seedings = computeTierSeedings(standings);
   const byMatchId = new Map(matches.map((m) => [m.matchId, m]));
 
   function resolveSource(src) {
+    if (src.type === 'tierSeed') {
+      const list = seedings[src.rank];
+      const row = list && list.find((r) => r.seed === src.seed);
+      return row ? { teamId: row.teamId, teamName: row.teamName } : null;
+    }
     if (src.type === 'poolRank') {
       const pool = standings[src.pool];
       if (!pool || !pool.complete) return null;
@@ -105,7 +152,16 @@ function resolveTieredMatches(matches, standings) {
   // propagates. If a slot's team changes, any score/referee that was based on
   // the old team is cleared (so the TD re-scores it). Looped so a pool fix
   // cascades pool -> semi -> 3rd/final.
-  let out = matches;
+  // Semis used to be built as pool-vs-pool by rank (A#1 v B#1). They are now
+  // division-seeded (1v4, 2v3); rewrite any stored legacy poolRank sources.
+  let out = matches.map((m) => {
+    if (m.phase === 'tiered' && /-sf[12]$/.test(m.matchId) && m.sourceA && m.sourceA.type === 'poolRank') {
+      const rank = m.sourceA.rank;
+      const sf1 = /-sf1$/.test(m.matchId);
+      return { ...m, sourceA: { type: 'tierSeed', rank, seed: sf1 ? 1 : 2 }, sourceB: { type: 'tierSeed', rank, seed: sf1 ? 4 : 3 } };
+    }
+    return m;
+  });
   for (let pass = 0; pass < 3; pass++) {
     let changed = false;
     out = out.map((m) => {
@@ -137,4 +193,4 @@ function resolveTieredMatches(matches, standings) {
   return out;
 }
 
-module.exports = { computePoolStandings, resolveTieredMatches };
+module.exports = { computePoolStandings, computeTierSeedings, resolveTieredMatches };

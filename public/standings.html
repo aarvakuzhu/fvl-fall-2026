@@ -178,7 +178,7 @@ async function loadAll() {
   const res = await fetch('/api/tournament/standings', { headers });
   const data = await res.json();
   renderPools(data.pools || {});
-  renderTiered(data.tiered || []);
+  renderTiered(data.tiered || [], data.tierSeedings || {});
 }
 
 function renderPools(pools) {
@@ -200,7 +200,7 @@ function renderPools(pools) {
   }).join('');
 }
 
-function renderTiered(tiered) {
+function renderTiered(tiered, seedings) {
   if (!tiered.length) return;
   const tierNames = [...new Set(tiered.map(m => m.group))];
   const order = ['Gold','Silver','Bronze','Copper'];
@@ -216,7 +216,9 @@ function renderTiered(tiered) {
     '<div class="bracket-grid">' +
     tierNames.map(t => {
       const matches = tiered.filter(m => m.group === t).sort((a,b) => a.timeStart < b.timeStart ? -1 : 1);
-      return `<div class="bracket-tier"><h3>${t}</h3>${matches.map(line).join('')}</div>`;
+      const seeds = seedings[order.indexOf(t) + 1];
+      const seedHtml = seeds ? `<div class="muted" style="font-size:12px;margin-bottom:6px;">Seeds: ` + seeds.map(r => `${r.seed}. ${r.teamName} (Pool ${r.pool})${r.randomTie ? ' \ud83c\udfb2' : ''}`).join(' &middot; ') + `</div>` + seeds.filter(r => r.randomTie).map(r => `<div class="muted" style="font-size:12px;margin-bottom:4px;">\ud83c\udfb2 <b>${r.teamName}</b>: ${r.tieNote}</div>`).join('') : '<div class="muted" style="font-size:12px;margin-bottom:6px;">Seeded across pools after league lock: 1 v 4, 2 v 3.</div>';
+      return `<div class="bracket-tier"><h3>${t}</h3>${seedHtml}${matches.map(line).join('')}</div>`;
     }).join('') +
     '</div>';
 }

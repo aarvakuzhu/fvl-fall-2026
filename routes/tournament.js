@@ -7,7 +7,7 @@ const Schedule = require('../models/Schedule');
 const DraftState = require('../models/DraftState');
 const { isValidToken, OFFICIAL_DRAFT_ID } = require('../utils/tdAuth');
 const { buildPoolSkeleton, assignPoolsToSkeleton, assignReferees, buildTieredSkeleton } = require('../utils/scheduleGen');
-const { computePoolStandings, resolveTieredMatches } = require('../utils/standings');
+const { computePoolStandings, computeTierSeedings, resolveTieredMatches } = require('../utils/standings');
 
 const TOURNAMENT_ID = 'fvl-major-oct-2026'; // one active tournament for now
 
@@ -325,7 +325,7 @@ router.get('/standings', requireRevealedOrTd, async (req, res) => {
 
     const standings = computePoolStandings(doc.pools, doc.matches, { locked: doc.leagueLocked });
     const tiered = doc.matches.filter((m) => m.phase === 'tiered');
-    res.json({ pools: standings, tiered, leagueLocked: !!doc.leagueLocked });
+    res.json({ pools: standings, tiered, leagueLocked: !!doc.leagueLocked, tierSeedings: computeTierSeedings(standings) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to compute standings' });
   }
