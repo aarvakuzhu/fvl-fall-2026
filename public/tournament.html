@@ -1041,9 +1041,12 @@ function printScoresheets(rows, perPage) {
     if(!matchMedia('(pointer: coarse)').matches){setTimeout(function(){window.print()},500);}
   <\/script></body>`);
   // A new tab (not a hidden iframe): phone browsers print the whole top-level page and ignore iframes.
-  const w = window.open('', '_blank');
+  // Open it as a real document URL (blob:), not a document.write into about:blank, since mobile Chrome
+  // can print the opener instead when asked to print a written-in blank window.
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const w = window.open(url, '_blank');
   if (!w) { toast('Pop-up blocked — allow pop-ups for this site, then tap Print again.'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(() => URL.revokeObjectURL(url), 300000);
 }
 
 /* ── Print options modal ── */
