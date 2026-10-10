@@ -7,6 +7,8 @@
 // default, easy to change in one place if a different one is wanted):
 // match wins -> point differential -> total points scored.
 
+const crypto = require('crypto');
+
 function computePoolStandings(pools, matches) {
   // pools: [{pool, teamId, teamName}, ...]  (the random draw result)
   // matches: schedule matches, phase === 'pool'
@@ -37,10 +39,35 @@ function computePoolStandings(pools, matches) {
   Object.keys(byPool).forEach((poolName) => {
     const rows = byPool[poolName].map((r) => ({ ...r, diff: r.pointsFor - r.pointsAgainst }));
     rows.sort((x, y) => (y.wins - x.wins) || (y.diff - x.diff) || (y.pointsFor - x.pointsFor));
-    rows.forEach((r, i) => { r.rank = i + 1; });
     const gamesInPool = poolMatches.filter((m) => m.group === poolName).length;
     const gamesComplete = poolMatches.filter((m) => m.group === poolName && m.completed).length;
-    standings[poolName] = { rows, complete: gamesInPool > 0 && gamesComplete === gamesInPool };
+    const poolDone = gamesInPool > 0 && gamesComplete === gamesInPool;
+    // Teams still level on wins, differential AND points scored: once the pool
+    // is finished, order them by a seeded random draw and flag it so the UI can
+    // explain it. The draw is a hash of the pool + tied teams + their stats, so
+    // it is stable across page loads (no re-rolling) and only changes if a
+    // score correction changes the tie itself. While the pool is still in
+    // progress the tie is provisional: stable order by team id, not flagged.
+    const key = (r) => r.wins + '|' + r.diff + '|' + r.pointsFor;
+    let i = 0;
+    while (i < rows.length) {
+      let j = i;
+      while (j + 1 < rows.length && key(rows[j + 1]) === key(rows[i])) j++;
+      if (j > i) {
+        const group = rows.slice(i, j + 1);
+        const ids = group.map((r) => r.teamId).sort((a, b) => a - b).join(',');
+        group.forEach((r) => { r._h = crypto.createHash('sha1').update(poolName + '#' + key(r) + '#' + ids + '#' + r.teamId).digest('hex'); });
+        group.sort((x, y) => poolDone ? (x._h < y._h ? -1 : 1) : (x.teamId - y.teamId));
+        group.forEach((r, k) => {
+          rows[i + k] = r;
+          delete r._h;
+          if (poolDone) { r.randomTie = true; r.tieNote = 'Tied with ' + group.filter((o) => o !== r).map((o) => o.teamName).join(' & ') + ' on wins, point differential and points scored \u2014 order decided by random draw.'; }
+        });
+      }
+      i = j + 1;
+    }
+    rows.forEach((r, i2) => { r.rank = i2 + 1; });
+    standings[poolName] = { rows, complete: poolDone };
   });
 
   return standings;

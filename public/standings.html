@@ -195,8 +195,8 @@ function renderPools(pools) {
     const statusPill = complete ? '<span class="pill success">Final</span>' : '<span class="pill muted">In Progress</span>';
     return `<div class="card"><h2>Pool ${p} ${statusPill}</h2>
       <table><thead><tr><th>#</th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Diff</th><th class="num">Pts</th></tr></thead><tbody>
-      ${rows.map(r => `<tr class="rank-${r.rank}"><td>${r.rank}</td><td>${r.teamName}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}
-      </tbody></table></div>`;
+      ${rows.map(r => `<tr class="rank-${r.rank}"><td>${r.rank}</td><td>${r.teamName}${r.randomTie ? ` <span class="pill muted" title="${r.tieNote}">\ud83c\udfb2 random draw</span>` : ''}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}
+      </tbody></table>${rows.filter(r => r.randomTie).map(r => `<p class="muted" style="font-size:12px;margin:6px 0 0;">\ud83c\udfb2 <b>${r.teamName}</b>: ${r.tieNote}</p>`).join('')}</div>`;
   }).join('');
 }
 
