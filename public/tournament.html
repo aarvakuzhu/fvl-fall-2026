@@ -152,6 +152,9 @@ a.link:hover{text-decoration:underline;}
 .profile-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:center;justify-content:center;padding:20px;}
 .profile-backdrop.active{display:flex;}
 .profile-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);max-width:440px;width:100%;max-height:85vh;overflow-y:auto;padding:26px;position:relative;}
+.print-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.print-opts select{width:100%;}
+.po-check{display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-top:6px;color:var(--text);cursor:pointer;}
 .profile-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer;line-height:1;}
 .profile-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;object-position:top;display:block;margin:0 auto 12px;border:2px solid var(--gold);}
 .profile-photo-fallback{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--surface2);margin:0 auto 12px;border:2px solid var(--border2);}
@@ -224,6 +227,7 @@ a.link:hover{text-decoration:underline;}
       <button class="menu-card" data-view="format"><div class="icon">📋</div><div class="title">Format &amp; Flyer</div><div class="sub">Venue, tiers, prizes</div></button>
       <button class="menu-card" data-view="schedule"><div class="icon">🏐</div><div class="title">Schedule</div><div class="sub">Search matches &amp; referees</div></button>
       <button class="menu-card" data-view="teams"><div class="icon">👥</div><div class="title">Teams &amp; Rosters</div><div class="sub">Every team, captain to last pick</div></button>
+      <button class="menu-card" id="menu-print-btn"><div class="icon">🖨</div><div class="title">Print Scorecards</div><div class="sub">Pre-filled sheets for referees</div></button>
       <button class="menu-card" id="menu-standings-btn"><div class="icon">🏆</div><div class="title">Standings</div><div class="sub">Pool ranks &amp; bracket results</div></button>
       <button class="menu-card td-only" data-view="reveal"><div class="icon">👁</div><div class="title">Reveal</div><div class="sub">Make visible to everyone</div></button>
     </div>
@@ -300,6 +304,30 @@ a.link:hover{text-decoration:underline;}
     </div>
   </div>
 
+  <!-- PRINT SCORECARDS OPTIONS (TD only) -->
+  <div id="print-backdrop" class="profile-backdrop">
+    <div class="profile-box">
+      <button class="profile-close" id="print-close-btn">✕</button>
+      <h2 style="margin-bottom:4px;">Print Scorecards</h2>
+      <p class="hint" style="margin-bottom:14px;">One pre-filled sheet per game. Pick which games to include.</p>
+      <div class="print-opts">
+        <div class="filter-field"><label>Court</label><select id="po-court"></select></div>
+        <div class="filter-field"><label>Phase</label><select id="po-phase"><option value="">All games</option><option value="pool">Pool play</option><option value="tiered">Bracket (post-league)</option></select></div>
+        <div class="filter-field"><label>Pool / Tier</label><select id="po-group"></select></div>
+        <div class="filter-field"><label>Team</label><select id="po-team"></select></div>
+        <div class="filter-field"><label>From time</label><select id="po-from"></select></div>
+        <div class="filter-field"><label>To time</label><select id="po-to"></select></div>
+      </div>
+      <label class="po-check"><input type="checkbox" id="po-scored"> Include games already scored</label>
+      <label class="po-check"><input type="checkbox" id="po-tbd" checked> Include bracket games whose teams aren't decided yet</label>
+      <div id="po-count" style="margin:14px 0 4px;font-weight:700;"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn gold" id="po-print-btn">🖨 Print</button>
+        <button class="btn outline" id="po-cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- SCHEDULE -->
   <div id="view-schedule" class="view">
     <button class="back-btn" data-back>← Menu</button>
@@ -315,7 +343,6 @@ a.link:hover{text-decoration:underline;}
     <div class="card" id="schedule-card">
       <div id="sheet-actions" style="display:none;margin-bottom:12px;">
         <button class="btn outline" id="print-sheets-btn">🖨 Print Scoresheets</button>
-        <span class="hint" id="print-sheets-hint" style="margin-left:8px;"></span>
       </div>
       <div class="filters">
         <div class="filter-field" style="flex:1;min-width:160px;">
@@ -917,8 +944,7 @@ let LAST_SCHED_ROWS = [];
 // court / time / teams / referee, big point boxes 1-25 (22-25 shaded: only
 // used from 20-20), result section with signatures. Rules: first to 21, win
 // by 2 from 20-20, hard cap 25.
-function printScoresheets() {
-  const rows = LAST_SCHED_ROWS;
+function printScoresheets(rows) {
   if (!rows.length) { toast('No games to print.'); return; }
   const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const boxes = () => Array.from({length:25}, (_, i) => `<div class="b${i >= 21 ? ' x' : ''}">${i + 1}</div>`).join('');
@@ -966,7 +992,56 @@ function printScoresheets() {
   f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
   setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); }, 250);
 }
-document.getElementById('print-sheets-btn').addEventListener('click', printScoresheets);
+/* ── Print options modal ── */
+function openPrintModal() {
+  if (!SCHED || !SCHED.matches || !SCHED.matches.length) { toast('No schedule yet.'); return; }
+  const ms = SCHED.matches;
+  const opt = (v, t) => `<option value="${String(v).replace(/"/g,'&quot;')}">${t}</option>`;
+  const courts = [...new Set(ms.map(m => m.court))].sort((a,b) => a-b);
+  document.getElementById('po-court').innerHTML = opt('', 'All courts') + courts.map(c => opt(c, 'Court ' + c)).join('');
+  const groups = [...new Set(ms.map(m => m.group))].sort();
+  document.getElementById('po-group').innerHTML = opt('', 'All pools / tiers') + groups.map(g => opt(g, g)).join('');
+  const teams = [...new Set(ms.flatMap(m => [m.teamAName, m.teamBName]).filter(Boolean))].sort();
+  document.getElementById('po-team').innerHTML = opt('', 'Any team') + teams.map(t => opt(t, t)).join('');
+  const times = [...new Set(ms.map(m => m.timeStart))].sort();
+  document.getElementById('po-from').innerHTML = opt('', 'Start of day') + times.map(t => opt(t, fmtTime12(t))).join('');
+  document.getElementById('po-to').innerHTML = opt('', 'End of day') + times.map(t => opt(t, fmtTime12(t))).join('');
+  document.getElementById('po-scored').checked = false;
+  document.getElementById('po-tbd').checked = true;
+  updatePrintCount();
+  document.getElementById('print-backdrop').classList.add('active');
+}
+function printModalRows() {
+  const court = document.getElementById('po-court').value, phase = document.getElementById('po-phase').value;
+  const group = document.getElementById('po-group').value, team = document.getElementById('po-team').value;
+  const from = document.getElementById('po-from').value, to = document.getElementById('po-to').value;
+  const withScored = document.getElementById('po-scored').checked, withTbd = document.getElementById('po-tbd').checked;
+  return SCHED.matches.filter(m => {
+    if (court && String(m.court) !== court) return false;
+    if (phase && m.phase !== phase) return false;
+    if (group && m.group !== group) return false;
+    if (team && m.teamAName !== team && m.teamBName !== team) return false;
+    if (from && m.timeStart < from) return false;
+    if (to && m.timeStart > to) return false;
+    if (!withScored && m.completed) return false;
+    if (!withTbd && (m.teamAId === null || m.teamBId === null)) return false;
+    return true;
+  }).sort((a,b) => (a.timeStart < b.timeStart ? -1 : a.timeStart > b.timeStart ? 1 : a.court - b.court));
+}
+function updatePrintCount() {
+  const n = printModalRows().length;
+  document.getElementById('po-count').textContent = n + ' scorecard' + (n === 1 ? '' : 's') + ' will print';
+  document.getElementById('po-print-btn').disabled = !n;
+}
+['po-court','po-phase','po-group','po-team','po-from','po-to','po-scored','po-tbd'].forEach(id =>
+  document.getElementById(id).addEventListener('change', updatePrintCount));
+const closePrintModal = () => document.getElementById('print-backdrop').classList.remove('active');
+document.getElementById('print-close-btn').addEventListener('click', closePrintModal);
+document.getElementById('po-cancel-btn').addEventListener('click', closePrintModal);
+document.getElementById('print-backdrop').addEventListener('click', (e) => { if (e.target.id === 'print-backdrop') closePrintModal(); });
+document.getElementById('po-print-btn').addEventListener('click', () => { const rows = printModalRows(); closePrintModal(); printScoresheets(rows); });
+document.getElementById('print-sheets-btn').addEventListener('click', openPrintModal);
+document.getElementById('menu-print-btn').addEventListener('click', () => { showView('schedule'); openPrintModal(); });
 
 function renderScheduleTable() {
   renderLeagueLock();
@@ -996,7 +1071,7 @@ function renderScheduleTable() {
   rows.sort((a,b) => (a.timeStart < b.timeStart ? -1 : a.timeStart > b.timeStart ? 1 : a.court - b.court));
   LAST_SCHED_ROWS = rows;
   const sa = document.getElementById('sheet-actions');
-  if (sa) { sa.style.display = IS_TD ? '' : 'none'; document.getElementById('print-sheets-hint').textContent = 'Prints one sheet per game for the ' + rows.length + ' game(s) shown below \u2014 use the filters to pick a court or phase.'; }
+  if (sa) sa.style.display = IS_TD ? '' : 'none';
 
   const wrap = document.getElementById('schedule-table-wrap');
   if (!rows.length) {
