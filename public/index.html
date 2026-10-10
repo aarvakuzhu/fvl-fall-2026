@@ -104,6 +104,14 @@ h1{font-family:var(--fd);font-size:clamp(2.2rem,7vw,3.2rem);letter-spacing:2px;c
       <div class="go">View Tournament →</div>
     </a>
 
+    <a class="hub-card" href="/tournament.html#schedule">
+      <div class="icon">📅</div>
+      <div class="title">Schedule</div>
+      <div class="desc">Games, courts, times and referees.</div>
+      <div class="widget muted" id="widget-schedule">Loading…</div>
+      <div class="go">View Schedule →</div>
+    </a>
+
     <a class="hub-card" href="/standings.html">
       <div class="icon">🏆</div>
       <div class="title">Standings</div>
@@ -205,8 +213,37 @@ async function loadStandingsWidget() {
   }
 }
 
+/* ── Schedule: next three unscored games ── */
+function fmtT(hhmm) {
+  const [h, m] = (hhmm || '0:0').split(':').map(Number);
+  return (((h + 11) % 12) + 1) + ':' + String(m).padStart(2, '0') + (h >= 12 ? ' PM' : ' AM');
+}
+async function loadScheduleWidget() {
+  const el = document.getElementById('widget-schedule');
+  try {
+    const res = await fetch('/api/tournament/schedule');
+    if (!res.ok) { el.textContent = 'Coming soon'; return; }
+    const doc = await res.json();
+    const all = (doc.matches || []).slice().sort((a, b) => (a.timeStart < b.timeStart ? -1 : a.timeStart > b.timeStart ? 1 : a.court - b.court));
+    if (!all.length) { el.textContent = 'Schedule coming soon'; return; }
+    const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const next = all.map((m, i) => ({ m, n: i + 1 })).filter(x => !x.m.completed).slice(0, 3);
+    if (!next.length) { el.innerHTML = '<span style="color:var(--text2);">All ' + all.length + ' games played</span>'; el.classList.remove('muted'); return; }
+    el.innerHTML = '<div style="color:var(--text2);font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Up next</div>' +
+      next.map(({ m, n }) => {
+        const teams = (m.teamAId === null || m.teamBId === null) ? 'To be decided' : esc(m.teamAName) + ' vs ' + esc(m.teamBName);
+        return '<div><b>' + esc(fmtT(m.timeStart)) + '</b> · Ct ' + esc(m.court) + ' · #' + n + '<br><span style="color:var(--text2);">' + teams + '</span></div>';
+      }).join('') +
+      '<div style="color:var(--text2);margin-top:4px;">' + all.filter(x => x.completed).length + ' of ' + all.length + ' games played</div>';
+    el.classList.remove('muted');
+  } catch (e) {
+    el.textContent = 'Unavailable right now';
+  }
+}
+
 loadDraftWidget();
 loadTournamentWidget();
+loadScheduleWidget();
 loadStandingsWidget();
 </script>
 </body>

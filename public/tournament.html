@@ -477,7 +477,7 @@ function enterApp() {
   document.getElementById('app').style.display = '';
   document.getElementById('app-eyebrow').textContent = 'Fowler Volleyball League' + (IS_TD ? ' — TD View' : '');
   document.body.classList.toggle('is-td', IS_TD);
-  showView(IS_TD ? 'menu' : 'public-landing');
+  showView(location.hash === '#schedule' ? 'schedule' : (IS_TD ? 'menu' : 'public-landing'));
   loadAll();
 }
 
