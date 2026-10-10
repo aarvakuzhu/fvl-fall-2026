@@ -65,7 +65,7 @@ function buildPoolSkeleton(opts) {
           matchId: `pool${poolName}-${pairing}`,
           phase: 'pool',
           group: poolName,
-          label: `Pool ${poolName}: ${pairing}`,
+          label: `Pool ${poolName}: ${pairing.replace('v', ' vs ')}`,
           court: courtIdx + 1,
           timeStart,
           timeEnd,

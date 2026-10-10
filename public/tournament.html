@@ -948,6 +948,16 @@ document.getElementById('league-lock-btn').addEventListener('click', toggleLeagu
 
 let LAST_SCHED_ROWS = [];
 
+// Display label: "Pool A: 1v2" -> "Pool A: 1 vs 2" (works for already-stored schedules too).
+const fmtLabel = (l) => String(l || '').replace(/(\d)v(\d)/, '$1 vs $2');
+// Game number = position in the full schedule by start time, then court (1-based).
+function gameNumbers() {
+  const sorted = (SCHED.matches || []).slice().sort((a, b) => (a.timeStart < b.timeStart ? -1 : a.timeStart > b.timeStart ? 1 : a.court - b.court));
+  const map = {};
+  sorted.forEach((m, i) => { map[m.matchId] = i + 1; });
+  return map;
+}
+
 // One printable scoresheet per game: white background, pre-filled match /
 // court / time / teams / referee, big point boxes 1-25 (22-25 shaded: only
 // used from 20-20), result section with signatures. Rules: first to 21, win
@@ -961,7 +971,8 @@ function buildSheetsHtml(rows, perPage, forPreview) {
     return `<section class="sheet">
       <div class="top"><div class="ev">${esc(CFG && CFG.name || 'Tournament')}</div><div class="ttl">OFFICIAL SCORESHEET</div></div>
       <div class="meta">
-        <div><span>Match</span><b>${esc(m.label)}</b></div>
+        <div><span>Game #</span><b>${esc(m.gameNo || '')}</b></div>
+        <div><span>Match</span><b>${esc(fmtLabel(m.label))}</b></div>
         <div><span>Court</span><b>${esc(m.court)}</b></div>
         <div><span>Time</span><b>${esc(fmtTime12(m.timeStart))}</b></div>
         <div><span>Referee (team)</span><b>${esc(m.refereeTeamName || '')}&nbsp;</b></div>
@@ -983,7 +994,7 @@ function buildSheetsHtml(rows, perPage, forPreview) {
   .page{page-break-after:always;height:10.1in;display:flex;flex-direction:column}.page:last-child{page-break-after:auto}
   .sheet{height:10.1in;display:flex;flex-direction:column;gap:9px}
   .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #000;padding-bottom:4px}.ev{font-size:13pt;font-weight:700}.ttl{font-size:17pt;font-weight:800;letter-spacing:1px}
-  .meta{display:grid;grid-template-columns:2.2fr .7fr 1fr 1.6fr;gap:8px}.meta div{border:1.5px solid #000;border-radius:4px;padding:4px 8px}.meta span{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.5px;color:#444}.meta b{font-size:12pt}
+  .meta{display:grid;grid-template-columns:.8fr 2.2fr .7fr 1fr 1.6fr;gap:8px}.meta div{border:1.5px solid #000;border-radius:4px;padding:4px 8px}.meta span{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.5px;color:#444}.meta b{font-size:12pt}
   .rule{font-size:9pt;color:#444}
   .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0}.team{display:flex;flex-direction:column;min-height:0}.tl{font-size:8pt;font-weight:700;letter-spacing:1px;color:#444}
   .tn{font-size:15pt;font-weight:800;border-bottom:2px solid #000;min-height:28px;margin-bottom:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -1008,6 +1019,8 @@ function buildSheetsHtml(rows, perPage, forPreview) {
 
 function printScoresheets(rows, perPage) {
   if (!rows.length) { toast('No games to print.'); return; }
+  const nums = gameNumbers();
+  rows = rows.map(m => ({ ...m, gameNo: nums[m.matchId] }));
   const html = buildSheetsHtml(rows, perPage || 1, false);
   const old = document.getElementById('sheet-print-frame'); if (old) old.remove();
   const f = document.createElement('iframe');
@@ -1061,7 +1074,7 @@ function updatePrintCount() {
   const frame = document.getElementById('po-preview-frame');
   document.getElementById('po-preview-empty').style.display = n ? 'none' : 'flex';
   frame.style.display = n ? '' : 'none';
-  if (n) frame.srcdoc = buildSheetsHtml(printModalRows().slice(0, perPage), perPage, true);
+  if (n) { const nums = gameNumbers(); frame.srcdoc = buildSheetsHtml(printModalRows().slice(0, perPage).map(m => ({ ...m, gameNo: nums[m.matchId] })), perPage, true); }
   const pages = Math.ceil(n / perPage);
   document.getElementById('po-count').textContent += ' \u00b7 ' + pages + ' page' + (pages === 1 ? '' : 's');
 }
@@ -1110,7 +1123,8 @@ function renderScheduleTable() {
     wrap.innerHTML = '<table><tbody><tr class="no-results"><td>No matches found for this filter.</td></tr></tbody></table>';
     return;
   }
-  wrap.innerHTML = '<table><thead><tr><th>Time</th><th>Court</th><th>Match</th><th>Teams</th><th>Score</th><th>Referee</th><th></th></tr></thead><tbody>' +
+  const nums = gameNumbers();
+  wrap.innerHTML = '<table><thead><tr><th>#</th><th>Time</th><th>Court</th><th>Match</th><th>Teams</th><th>Score</th><th>Referee</th><th></th></tr></thead><tbody>' +
     rows.map(m => {
       const teamsCell = (m.teamAId === null || m.teamBId === null)
         ? '<span style="color:var(--muted);">TBD</span>'
@@ -1119,7 +1133,7 @@ function renderScheduleTable() {
       const refCell = m.refereeTeamName ? `<span class="pill ref">${m.refereeTeamName}</span>` : '<span style="color:var(--muted);">—</span>';
       const canScore = IS_TD && m.teamAId !== null && m.teamBId !== null && (m.phase === 'pool' ? !SCHED.leagueLocked : !!SCHED.leagueLocked);
       const scoreBtn = canScore ? `<button class="btn small outline" data-score-match="${m.matchId}">${m.completed ? 'Edit' : 'Score'}</button>` + (m.completed ? ` <button class="btn small outline" data-clear-match="${m.matchId}">Clear</button>` : '') : '';
-      return `<tr><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${m.label}</td><td>${teamsCell}</td><td>${scoreCell}</td><td>${refCell}</td><td>${scoreBtn}</td></tr>`;
+      return `<tr><td>${nums[m.matchId]}</td><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${fmtLabel(m.label)}</td><td>${teamsCell}</td><td>${scoreCell}</td><td>${refCell}</td><td>${scoreBtn}</td></tr>`;
     }).join('') +
     '</tbody></table>';
 
