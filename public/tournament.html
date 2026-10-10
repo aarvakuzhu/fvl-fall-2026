@@ -154,6 +154,10 @@ a.link:hover{text-decoration:underline;}
 .profile-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);max-width:440px;width:100%;max-height:85vh;overflow-y:auto;padding:26px;position:relative;}
 .print-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
 .print-opts select{width:100%;}
+.po-preview-label{font-family:var(--fu);font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-top:8px;}
+.po-preview{position:relative;width:204px;height:264px;margin:6px auto 0;border:1px solid var(--border2);border-radius:4px;overflow:hidden;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.25);}
+.po-preview iframe{position:absolute;top:0;left:0;width:816px;height:1056px;border:0;transform:scale(0.25);transform-origin:0 0;pointer-events:none;background:#fff;}
+.po-empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:#666;font-size:0.8rem;background:#fff;}
 .po-check{display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-top:6px;color:var(--text);cursor:pointer;}
 .profile-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer;line-height:1;}
 .profile-photo{width:88px;height:88px;border-radius:50%;object-fit:cover;object-position:top;display:block;margin:0 auto 12px;border:2px solid var(--gold);}
@@ -318,9 +322,13 @@ a.link:hover{text-decoration:underline;}
         <div class="filter-field"><label>From time</label><select id="po-from"></select></div>
         <div class="filter-field"><label>To time</label><select id="po-to"></select></div>
       </div>
+      <div class="filter-field" style="margin-bottom:10px;"><label>Layout</label>
+        <select id="po-layout"><option value="1">1 scorecard per page (largest)</option><option value="2">2 scorecards per page (saves paper)</option></select></div>
       <label class="po-check"><input type="checkbox" id="po-scored"> Include games already scored</label>
       <label class="po-check"><input type="checkbox" id="po-tbd" checked> Include bracket games whose teams aren't decided yet</label>
       <div id="po-count" style="margin:14px 0 4px;font-weight:700;"></div>
+      <div class="po-preview-label">Preview — first page</div>
+      <div class="po-preview"><iframe id="po-preview-frame" title="Scorecard preview" tabindex="-1"></iframe><div class="po-empty" id="po-preview-empty">Nothing to preview</div></div>
       <div class="btn-row" style="margin-top:10px;">
         <button class="btn gold" id="po-print-btn">🖨 Print</button>
         <button class="btn outline" id="po-cancel-btn">Cancel</button>
@@ -944,8 +952,7 @@ let LAST_SCHED_ROWS = [];
 // court / time / teams / referee, big point boxes 1-25 (22-25 shaded: only
 // used from 20-20), result section with signatures. Rules: first to 21, win
 // by 2 from 20-20, hard cap 25.
-function printScoresheets(rows) {
-  if (!rows.length) { toast('No games to print.'); return; }
+function buildSheetsHtml(rows, perPage, forPreview) {
   const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const boxes = () => Array.from({length:25}, (_, i) => `<div class="b${i >= 21 ? ' x' : ''}">${i + 1}</div>`).join('');
   const sheet = (m) => {
@@ -959,7 +966,7 @@ function printScoresheets(rows) {
         <div><span>Time</span><b>${esc(fmtTime12(m.timeStart))}</b></div>
         <div><span>Referee (team)</span><b>${esc(m.refereeTeamName || '')}&nbsp;</b></div>
       </div>
-      <div class="rule">First to <b>21</b> wins. At 20\u201320, win by <b>2</b>. Maximum <b>25</b> (shaded boxes only used from 20\u201320). Circle each point as it is scored, then circle the final number.</div>
+      <div class="rule">First to <b>21</b> wins. At 20–20, win by <b>2</b>. Maximum <b>25</b> (shaded boxes only used from 20–20). Circle each point as it is scored, then circle the final number.</div>
       <div class="teams">${team('A', a)}${team('B', b)}</div>
       <div class="result">
         <div class="win"><span>Winner</span><label><i></i> Team A</label><label><i></i> Team B</label></div>
@@ -969,22 +976,39 @@ function printScoresheets(rows) {
       <div class="td">Entered in system by (TD initials): <u></u></div>
     </section>`;
   };
+  const pages = [];
+  for (let i = 0; i < rows.length; i += perPage) pages.push(rows.slice(i, i + perPage));
   const css = `@page{size:letter portrait;margin:0.4in}*{box-sizing:border-box}html,body{background:#fff!important;color:#000;margin:0;font-family:Arial,Helvetica,sans-serif}
-  .sheet{page-break-after:always;height:10.1in;display:flex;flex-direction:column;gap:9px}.sheet:last-child{page-break-after:auto}
+  ${forPreview ? 'body{padding:0.4in;}' : ''}
+  .page{page-break-after:always;height:10.1in;display:flex;flex-direction:column}.page:last-child{page-break-after:auto}
+  .sheet{height:10.1in;display:flex;flex-direction:column;gap:9px}
   .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #000;padding-bottom:4px}.ev{font-size:13pt;font-weight:700}.ttl{font-size:17pt;font-weight:800;letter-spacing:1px}
   .meta{display:grid;grid-template-columns:2.2fr .7fr 1fr 1.6fr;gap:8px}.meta div{border:1.5px solid #000;border-radius:4px;padding:4px 8px}.meta span{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.5px;color:#444}.meta b{font-size:12pt}
   .rule{font-size:9pt;border:1px dashed #666;border-radius:4px;padding:5px 8px;background:#f4f4f4}
-  .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1}.team{display:flex;flex-direction:column}.tl{font-size:8pt;font-weight:700;letter-spacing:1px;color:#444}
+  .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0}.team{display:flex;flex-direction:column;min-height:0}.tl{font-size:8pt;font-weight:700;letter-spacing:1px;color:#444}
   .tn{font-size:15pt;font-weight:800;border-bottom:2px solid #000;min-height:28px;margin-bottom:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  .grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:0;border:2px solid #000}
+  .grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:0;border:2px solid #000}
   .b{border:1px solid #000;display:flex;align-items:flex-start;justify-content:flex-start;padding:3px 5px;font-size:15pt;font-weight:700}.b.x{background:#d9d9d9;color:#444}
   .grid .b:nth-child(5n){border-right:0}.grid .b:nth-child(n+21){border-bottom:0}
   .result{display:grid;grid-template-columns:1fr 1fr;gap:12px;border:2px solid #000;border-radius:4px;padding:8px 10px;font-size:12pt}
   .result span{font-size:8pt;text-transform:uppercase;letter-spacing:.5px;color:#444;margin-right:10px}.win label{margin-right:18px;font-weight:700}.win i{display:inline-block;width:16px;height:16px;border:2px solid #000;vertical-align:-3px;margin-right:4px}
   .fin u{display:inline-block;width:80px;border-bottom:2px solid #000;margin-right:14px;font-weight:700}
   .sigs{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px}.sigs u{display:block;border-bottom:1.5px solid #000;height:26px}.sigs span{font-size:8pt;color:#444}
-  .td{font-size:9pt;color:#333}.td u{display:inline-block;width:120px;border-bottom:1.5px solid #000}`;
-  const html = '<!doctype html><html><head><meta charset="utf-8"><title>Scoresheets</title><style>' + css + '</style></head><body>' + rows.map(sheet).join('') + '</body></html>';
+  .td{font-size:9pt;color:#333}.td u{display:inline-block;width:120px;border-bottom:1.5px solid #000}
+  /* two games per page: each sheet gets half the page, tighter type */
+  .two .sheet{height:4.95in;gap:4px;overflow:hidden}.two .sheet:first-child{border-bottom:1.5px dashed #888;padding-bottom:6px}.two .sheet:last-child{padding-top:6px}
+  .two .top{padding-bottom:2px;border-bottom-width:2px}.two .ev{font-size:10pt}.two .ttl{font-size:12pt}
+  .two .meta{gap:5px}.two .meta div{padding:2px 6px}.two .meta span{font-size:6pt}.two .meta b{font-size:9.5pt}
+  .two .rule{font-size:7pt;padding:2px 6px}.two .teams{gap:8px}.two .tn{font-size:11pt;min-height:20px;margin-bottom:3px}.two .tl{font-size:6.5pt}
+  .two .b{font-size:10pt;padding:1px 4px}.two .result{padding:4px 8px;font-size:9.5pt;gap:8px}.two .result span{font-size:6.5pt}.two .win i{width:12px;height:12px}.two .fin u{width:60px}
+  .two .sigs{gap:12px;margin-top:2px}.two .sigs u{height:16px}.two .sigs span{font-size:6.5pt}.two .td{font-size:7pt}.two .td u{width:90px}`;
+  const body = pages.map(pg => `<div class="page${perPage === 2 ? ' two' : ''}">${pg.map(sheet).join('')}</div>`).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>Scoresheets</title><style>' + css + '</style></head><body>' + body + '</body></html>';
+}
+
+function printScoresheets(rows, perPage) {
+  if (!rows.length) { toast('No games to print.'); return; }
+  const html = buildSheetsHtml(rows, perPage || 1, false);
   const old = document.getElementById('sheet-print-frame'); if (old) old.remove();
   const f = document.createElement('iframe');
   f.id = 'sheet-print-frame'; f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
@@ -992,6 +1016,7 @@ function printScoresheets(rows) {
   f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
   setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); }, 250);
 }
+
 /* ── Print options modal ── */
 function openPrintModal() {
   if (!SCHED || !SCHED.matches || !SCHED.matches.length) { toast('No schedule yet.'); return; }
@@ -1032,14 +1057,21 @@ function updatePrintCount() {
   const n = printModalRows().length;
   document.getElementById('po-count').textContent = n + ' scorecard' + (n === 1 ? '' : 's') + ' will print';
   document.getElementById('po-print-btn').disabled = !n;
+  const perPage = Number(document.getElementById('po-layout').value);
+  const frame = document.getElementById('po-preview-frame');
+  document.getElementById('po-preview-empty').style.display = n ? 'none' : 'flex';
+  frame.style.display = n ? '' : 'none';
+  if (n) frame.srcdoc = buildSheetsHtml(printModalRows().slice(0, perPage), perPage, true);
+  const pages = Math.ceil(n / perPage);
+  document.getElementById('po-count').textContent += ' \u00b7 ' + pages + ' page' + (pages === 1 ? '' : 's');
 }
-['po-court','po-phase','po-group','po-team','po-from','po-to','po-scored','po-tbd'].forEach(id =>
+['po-court','po-phase','po-group','po-team','po-from','po-to','po-scored','po-tbd','po-layout'].forEach(id =>
   document.getElementById(id).addEventListener('change', updatePrintCount));
 const closePrintModal = () => document.getElementById('print-backdrop').classList.remove('active');
 document.getElementById('print-close-btn').addEventListener('click', closePrintModal);
 document.getElementById('po-cancel-btn').addEventListener('click', closePrintModal);
 document.getElementById('print-backdrop').addEventListener('click', (e) => { if (e.target.id === 'print-backdrop') closePrintModal(); });
-document.getElementById('po-print-btn').addEventListener('click', () => { const rows = printModalRows(); closePrintModal(); printScoresheets(rows); });
+document.getElementById('po-print-btn').addEventListener('click', () => { const rows = printModalRows(); closePrintModal(); printScoresheets(rows, Number(document.getElementById('po-layout').value)); });
 document.getElementById('print-sheets-btn').addEventListener('click', openPrintModal);
 document.getElementById('menu-print-btn').addEventListener('click', () => { showView('schedule'); openPrintModal(); });
 
