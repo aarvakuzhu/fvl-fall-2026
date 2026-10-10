@@ -966,7 +966,7 @@ function buildSheetsHtml(rows, perPage, forPreview) {
         <div><span>Time</span><b>${esc(fmtTime12(m.timeStart))}</b></div>
         <div><span>Referee (team)</span><b>${esc(m.refereeTeamName || '')}&nbsp;</b></div>
       </div>
-      <div class="rule">First to <b>21</b> wins. At 20–20, win by <b>2</b>. Maximum <b>25</b> (shaded boxes only used from 20–20). Circle each point as it is scored, then circle the final number.</div>
+      <div class="rule">Circle each point as it is scored. First to <b>21</b>; win by <b>2</b> from 20\u201320; max <b>25</b> (shaded boxes only from 20\u201320).</div>
       <div class="teams">${team('A', a)}${team('B', b)}</div>
       <div class="result">
         <div class="win"><span>Winner</span><label><i></i> Team A</label><label><i></i> Team B</label></div>
@@ -984,11 +984,11 @@ function buildSheetsHtml(rows, perPage, forPreview) {
   .sheet{height:10.1in;display:flex;flex-direction:column;gap:9px}
   .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #000;padding-bottom:4px}.ev{font-size:13pt;font-weight:700}.ttl{font-size:17pt;font-weight:800;letter-spacing:1px}
   .meta{display:grid;grid-template-columns:2.2fr .7fr 1fr 1.6fr;gap:8px}.meta div{border:1.5px solid #000;border-radius:4px;padding:4px 8px}.meta span{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.5px;color:#444}.meta b{font-size:12pt}
-  .rule{font-size:9pt;border:1px dashed #666;border-radius:4px;padding:5px 8px;background:#f4f4f4}
+  .rule{font-size:9pt;color:#444}
   .teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0}.team{display:flex;flex-direction:column;min-height:0}.tl{font-size:8pt;font-weight:700;letter-spacing:1px;color:#444}
   .tn{font-size:15pt;font-weight:800;border-bottom:2px solid #000;min-height:28px;margin-bottom:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  .grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:0;border:2px solid #000}
-  .b{border:1px solid #000;display:flex;align-items:flex-start;justify-content:flex-start;padding:3px 5px;font-size:15pt;font-weight:700}.b.x{background:#d9d9d9;color:#444}
+  .grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:0;border:2px solid #000;border-radius:3px}
+  .b{border:1px solid #999;display:flex;align-items:center;justify-content:center;font-size:20pt;font-weight:700}.b.x{background:#ececec;color:#777}
   .grid .b:nth-child(5n){border-right:0}.grid .b:nth-child(n+21){border-bottom:0}
   .result{display:grid;grid-template-columns:1fr 1fr;gap:12px;border:2px solid #000;border-radius:4px;padding:8px 10px;font-size:12pt}
   .result span{font-size:8pt;text-transform:uppercase;letter-spacing:.5px;color:#444;margin-right:10px}.win label{margin-right:18px;font-weight:700}.win i{display:inline-block;width:16px;height:16px;border:2px solid #000;vertical-align:-3px;margin-right:4px}
@@ -999,8 +999,8 @@ function buildSheetsHtml(rows, perPage, forPreview) {
   .two .sheet{height:4.95in;gap:4px;overflow:hidden}.two .sheet:first-child{border-bottom:1.5px dashed #888;padding-bottom:6px}.two .sheet:last-child{padding-top:6px}
   .two .top{padding-bottom:2px;border-bottom-width:2px}.two .ev{font-size:10pt}.two .ttl{font-size:12pt}
   .two .meta{gap:5px}.two .meta div{padding:2px 6px}.two .meta span{font-size:6pt}.two .meta b{font-size:9.5pt}
-  .two .rule{font-size:7pt;padding:2px 6px}.two .teams{gap:8px}.two .tn{font-size:11pt;min-height:20px;margin-bottom:3px}.two .tl{font-size:6.5pt}
-  .two .b{font-size:10pt;padding:1px 4px}.two .result{padding:4px 8px;font-size:9.5pt;gap:8px}.two .result span{font-size:6.5pt}.two .win i{width:12px;height:12px}.two .fin u{width:60px}
+  .two .rule{font-size:7pt}.two .teams{gap:8px}.two .tn{font-size:11pt;min-height:20px;margin-bottom:3px}.two .tl{font-size:6.5pt}
+  .two .b{font-size:12pt}.two .result{padding:4px 8px;font-size:9.5pt;gap:8px}.two .result span{font-size:6.5pt}.two .win i{width:12px;height:12px}.two .fin u{width:60px}
   .two .sigs{gap:12px;margin-top:2px}.two .sigs u{height:16px}.two .sigs span{font-size:6.5pt}.two .td{font-size:7pt}.two .td u{width:90px}`;
   const body = pages.map(pg => `<div class="page${perPage === 2 ? ' two' : ''}">${pg.map(sheet).join('')}</div>`).join('');
   return '<!doctype html><html><head><meta charset="utf-8"><title>Scoresheets</title><style>' + css + '</style></head><body>' + body + '</body></html>';
