@@ -38,6 +38,10 @@ async function requireRevealedOrTd(req, res, next) {
 // disturbing Schedule/Scores/Standings once locked.
 router.post('/lock', requireTd, async (req, res) => {
   try {
+    const existing = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+    if (existing && (existing.substitutions || []).length && !(req.body && req.body.force)) {
+      return res.status(409).json({ error: 'Rosters have ' + existing.substitutions.length + ' substitution(s) since the lock. Locking again rebuilds rosters from the draft and would undo them.' });
+    }
     const draft = await DraftState.findOne({ draftId: OFFICIAL_DRAFT_ID }).lean();
     if (!draft || !draft.data || !Array.isArray(draft.data.teams) || draft.data.teams.length === 0) {
       return res.status(404).json({ error: 'No official draft state to lock yet' });
@@ -81,11 +85,52 @@ router.post('/lock', requireTd, async (req, res) => {
   }
 });
 
+// Swap a player who is not playing for a replacement, after the roster lock. The replacement takes the same
+// slot (category, captaincy) and is flagged as a substitute; the swap is logged in `substitutions` so the
+// withdrawn player's history and the replacement's role are both preserved.
+router.post('/roster/substitute', requireTd, async (req, res) => {
+  try {
+    const outName = String((req.body && req.body.outName) || '').trim();
+    const inName = String((req.body && req.body.inName) || '').trim();
+    const reason = String((req.body && req.body.reason) || '').trim() || 'Did not attend';
+    if (!outName || !inName) return res.status(400).json({ error: 'outName and inName are required' });
+    const doc = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID });
+    if (!doc) return res.status(404).json({ error: 'Rosters are not locked yet' });
+
+    const norm = (x) => x.trim().toLowerCase();
+    let team = null, idx = -1;
+    doc.teams.forEach((t) => t.roster.forEach((p, i) => { if (norm(p.name) === norm(outName)) { team = t; idx = i; } }));
+    if (!team) return res.status(404).json({ error: 'No player named "' + outName + '" on any roster' });
+    if (doc.teams.some((t) => t.roster.some((p) => norm(p.name) === norm(inName)))) {
+      return res.status(409).json({ error: '"' + inName + '" is already on a roster' });
+    }
+
+    const out = team.roster[idx];
+    const maxId = Math.max(0, ...doc.teams.flatMap((t) => t.roster.map((p) => p.playerId)));
+    const entry = {
+      teamId: team.teamId, teamName: team.name, outPlayerId: out.playerId, outName: out.name, outTier: out.tier,
+      outPrice: out.price, outRound: out.round, outWasCaptain: !!out.isCaptain, outPic: out.pic || '',
+      inName, reason, at: new Date(),
+    };
+    team.roster.set(idx, {
+      playerId: maxId + 1, name: inName, tier: out.tier, price: 0, isCaptain: !!out.isCaptain, pic: '',
+      round: 'Substitute', isSubstitute: true, replacesName: out.name,
+    });
+    doc.substitutions.push(entry);
+    doc.markModified('substitutions');
+    await doc.save();
+    res.json({ ok: true, team: team.name, substitution: entry });
+  } catch (err) {
+    console.error('POST /tournament/roster/substitute error:', err);
+    res.status(500).json({ error: err.message || 'Failed to substitute player' });
+  }
+});
+
 router.get('/locked', requireRevealedOrTd, async (req, res) => {
   try {
     const doc = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID }).lean();
     if (!doc) return res.json({ locked: false });
-    res.json({ locked: true, teams: doc.teams, lockedAt: doc.lockedAt });
+    res.json({ locked: true, teams: doc.teams, lockedAt: doc.lockedAt, substitutions: doc.substitutions || [] });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load locked roster' });
   }
@@ -422,6 +467,29 @@ router.get('/player/:name', requireRevealedOrTd, async (req, res) => {
         if (p.name.trim().toLowerCase() === wanted) { matchInCurrent = p; matchTeamName = t.name; }
       });
     });
+    const subOut = (current.substitutions || []).find((x) => String(x.outName || '').trim().toLowerCase() === wanted);
+    if (!matchInCurrent && subOut) {
+      // Withdrawn after the lock: still a participant of this tournament's original roster, so their profile
+      // stays viewable and shows the withdrawal alongside any other history.
+      const allLocked = await LockedRoster.find({}).lean();
+      const configs = await TournamentConfig.find({}).lean();
+      const cfgById = new Map(configs.map((c) => [c.tournamentId, c]));
+      const cur = cfgById.get(TOURNAMENT_ID);
+      const history = [{
+        tournamentId: TOURNAMENT_ID, tournamentName: (cur && cur.name) || TOURNAMENT_ID, date: (cur && cur.date) || '',
+        teamName: subOut.teamName, tier: subOut.outTier, price: subOut.outPrice, round: subOut.outRound || subOut.outTier,
+        isCaptain: !!subOut.outWasCaptain, withdrawn: true, replacedBy: subOut.inName, reason: subOut.reason,
+      }];
+      allLocked.forEach((doc) => {
+        if (doc.tournamentId === TOURNAMENT_ID) return;
+        (doc.teams || []).forEach((t) => (t.roster || []).forEach((p) => {
+          if (p.name.trim().toLowerCase() !== wanted) return;
+          const c = cfgById.get(doc.tournamentId);
+          history.push({ tournamentId: doc.tournamentId, tournamentName: (c && c.name) || doc.tournamentId, date: (c && c.date) || '', teamName: t.name, tier: p.tier, price: p.price, round: p.round || p.tier, isCaptain: !!p.isCaptain });
+        }));
+      });
+      return res.json({ name: subOut.outName, pic: subOut.outPic || '', currentTeam: null, withdrawn: { replacedBy: subOut.inName, team: subOut.teamName, reason: subOut.reason }, history });
+    }
     if (!matchInCurrent) {
       // Not part of THIS tournament \u2014 refuse, even if they exist in some
       // other tournament's locked roster. This is the actual privacy
@@ -448,6 +516,8 @@ router.get('/player/:name', requireRevealedOrTd, async (req, res) => {
             price: p.price,
             round: p.round || p.tier,
             isCaptain: !!p.isCaptain,
+            isSubstitute: !!p.isSubstitute,
+            replacesName: p.replacesName || '',
           });
         });
       });

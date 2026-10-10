@@ -16,6 +16,8 @@ const LockedPlayerSchema = new mongoose.Schema(
     price:    { type: Number, required: true },
     isCaptain: { type: Boolean, default: false },
     pic:      { type: String, default: '' },   // captured at lock time from the draft's player pool, not the team roster entry (which doesn't carry it)
+    isSubstitute: { type: Boolean, default: false }, // joined after the lock as a replacement
+    replacesName: { type: String, default: '' },     // who they replaced
     round:    { type: String, default: '' },   // the tier round they sold in, or "Fire Sale" if they went unsold at least once first
   },
   { _id: false }
@@ -37,6 +39,9 @@ const LockedRosterSchema = new mongoose.Schema(
     tournamentId: { type: String, required: true, unique: true, index: true },
     teams:        { type: [LockedTeamSchema], default: [] },
     lockedAt:     { type: Date, default: Date.now },
+    // Audit trail of post-lock player swaps (withdrawals / no-shows). The roster above always reflects who is
+    // actually playing; this keeps who was swapped out so profiles and history stay truthful.
+    substitutions: { type: [mongoose.Schema.Types.Mixed], default: [] },
   },
   { timestamps: true }
 );

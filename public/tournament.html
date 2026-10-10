@@ -143,6 +143,9 @@ body:not(.is-td) .td-only{display:none!important;}
 .team-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
 .team-card h3{font-family:var(--fd);font-size:1.3rem;color:var(--gold);letter-spacing:1px;margin-bottom:10px;line-height:1;}
 .team-roster-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed var(--border);font-family:var(--fu);font-size:0.8rem;}
+.sub-tag{font-size:0.55rem;font-weight:700;letter-spacing:1px;background:rgba(34,214,138,0.15);color:var(--success);padding:1px 5px;border-radius:3px;vertical-align:middle;}
+.sub-btn{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;font-size:0.8rem;padding:0 5px;margin-left:6px;}
+.sub-note{font-size:0.7rem;color:var(--text2);margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;}.sub-note span{color:var(--muted);}
 .team-roster-row:last-child{border-bottom:none;}
 .team-roster-row.is-captain{color:var(--gold);font-weight:700;}
 .team-roster-row .tier-tag{font-size:0.6rem;letter-spacing:0.5px;color:var(--text2);text-transform:uppercase;flex-shrink:0;}
@@ -566,6 +569,22 @@ document.querySelectorAll('[data-back]').forEach(btn => {
   btn.addEventListener('click', () => showView(IS_TD ? 'menu' : 'public-landing'));
 });
 
+async function substitutePlayer(outName) {
+  const inName = (prompt(`Replace "${outName}" with (full name of the replacement):`) || '').trim();
+  if (!inName) return;
+  const reason = (prompt('Reason (optional):', 'Did not attend') || 'Did not attend').trim();
+  if (!confirm(`Replace ${outName} with ${inName}?\n\nThe replacement takes the same team slot and category. ${outName}'s history is kept and shows as withdrawn.`)) return;
+  const res = await fetch('/api/tournament/roster/substitute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+    body: JSON.stringify({ outName, inName, reason }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  toast(`${outName} replaced by ${inName}.`);
+  loadAll();
+}
+
 function renderTeamsRosters() {
   const emptyEl = document.getElementById('teams-empty');
   const gridEl  = document.getElementById('teams-grid');
@@ -600,14 +619,19 @@ function renderTeamsRosters() {
     const rows = roster.map((p) => {
       const isMatch = search && p.name.toLowerCase().includes(search);
       return `<div class="team-roster-row${p.isCaptain ? ' is-captain' : ''}" data-player="${p.name.replace(/"/g,'&quot;')}"${isMatch ? ' style="background:rgba(240,192,64,0.12);border-radius:4px;padding-left:6px;"' : ''}>
-         <span>${p.isCaptain ? '\u2605 ' : ''}${p.name}</span>
-         <span class="tier-tag">${p.tier}</span>
+         <span>${p.isCaptain ? '\u2605 ' : ''}${p.name}${p.isSubstitute ? ' <span class="sub-tag">SUB</span>' : ''}</span>
+         <span class="tier-tag">${p.tier}${IS_TD ? ` <button class="sub-btn" data-sub-out="${p.name.replace(/"/g,'&quot;')}" title="Replace this player">\u21c4</button>` : ''}</span>
        </div>`;
     }).join('');
-    return `<div class="team-card"><h3>${t.name}</h3>${rows}</div>`;
+    const swaps = ((LOCKED.substitutions || []).filter(x => x.teamId === t.teamId)).map(x =>
+      `<div class="sub-note">\u21b3 ${x.outName} out \u2192 ${x.inName} in <span>(${x.reason})</span></div>`).join('');
+    return `<div class="team-card"><h3>${t.name}</h3>${rows}${swaps}</div>`;
   }).join('');
   gridEl.querySelectorAll('[data-player]').forEach((row) => {
     row.addEventListener('click', () => openPlayerProfile(row.dataset.player));
+  });
+  gridEl.querySelectorAll('[data-sub-out]').forEach((btn) => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); substitutePlayer(btn.dataset.subOut); });
   });
 }
 document.getElementById('teams-search').addEventListener('input', renderTeamsRosters);
@@ -642,15 +666,16 @@ function renderPlayerProfile(profile) {
       <span class="th-name">${h.tournamentName}</span><span class="th-date">${h.date || ''}</span>
       <div class="th-row"><span>Team</span><b>${h.teamName}${h.isCaptain ? '<span class="profile-captain-badge">\u2605 Captain</span>' : ''}</b></div>
       <div class="th-row"><span>Category</span><b>${h.tier}</b></div>
-      <div class="th-row"><span>Sale Price</span><b>$${h.price}</b></div>
-      <div class="th-row"><span>Round</span><b>${h.round}</b></div>
+      ${h.isSubstitute ? '' : `<div class="th-row"><span>Sale Price</span><b>$${h.price}</b></div>`}
+      <div class="th-row"><span>Round</span><b>${h.isSubstitute ? 'Substitute for ' + h.replacesName : h.round}</b></div>
+      ${h.withdrawn ? `<div class="th-row"><span>Status</span><b style="color:var(--danger);">Withdrew \u2014 replaced by ${h.replacedBy}</b></div>` : ''}
     </div>
   `).join('');
 
   document.getElementById('profile-body').innerHTML = `
     ${photoHtml}
     <div class="profile-name">${profile.name}</div>
-    <div class="profile-team">Currently with ${profile.currentTeam}</div>
+    <div class="profile-team">${profile.withdrawn ? `Withdrew from ${profile.withdrawn.team} \u2014 replaced by ${profile.withdrawn.replacedBy}` : `Currently with ${profile.currentTeam}`}</div>
     <div class="profile-history-label">Tournament History (${(profile.history || []).length})</div>
     ${historyHtml || '<p class="hint">No history yet.</p>'}
   `;
