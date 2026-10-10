@@ -60,6 +60,13 @@ h1{font-family:var(--fd);font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;col
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:18px;}
 .card h2{font-family:var(--fu);font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
 table{width:100%;border-collapse:collapse;margin-top:4px;font-family:var(--fu);font-size:0.85rem;}
+table{table-layout:fixed;}
+th,td{vertical-align:middle;}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;width:48px;padding-right:10px;}
+th.rk,td.rk{text-align:center;width:36px;}
+td.team{overflow:hidden;text-overflow:ellipsis;}
+.rules ol{margin:4px 0 0 18px;padding:0;font-size:0.85rem;line-height:1.6;color:var(--text);}
+.rules p{font-size:0.82rem;line-height:1.55;color:var(--text2);margin:10px 0 0;}
 th{text-align:left;padding:6px 8px;font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);}
 td{padding:6px 8px;border-bottom:1px dashed var(--border);}
 td.num{text-align:right;}
@@ -105,6 +112,20 @@ tr.rank-1 td:first-child{color:var(--gold);font-weight:700;}
 
   <div class="card" id="pools-empty" style="display:none;"><div class="empty">No pool results yet.</div></div>
   <div id="pools-wrap"></div>
+
+  <div class="card rules">
+    <h2>How Rankings Work</h2>
+    <p style="margin-top:0;"><b>Pool ranking</b> — teams in a pool are ranked by, in order:</p>
+    <ol>
+      <li><b>Wins</b> (W) — most match wins</li>
+      <li><b>Point differential</b> (Diff) — points scored minus points allowed in pool games</li>
+      <li><b>Points scored</b> (Pts) — total points scored in pool games</li>
+      <li><b>Random draw</b> — if teams are still exactly level, the order is decided by a random draw. It is marked with a 🎲 and explained on this page.</li>
+    </ol>
+    <p><b>Divisions</b> — once pool play is final (locked by the Tournament Director), every pool's #1 team goes to Gold, #2 to Silver, #3 to Bronze and #4 to Copper.</p>
+    <p><b>Seeding &amp; semifinals</b> — the four teams in each division are seeded against each other using the same order (wins, differential, points scored, random draw). Semifinals are <b>Seed 1 vs Seed 4</b> and <b>Seed 2 vs Seed 3</b>. Winners play the Final; losers play the 3rd-place game.</p>
+    <p>Standings stay provisional until pool play is locked; brackets fill in after the lock.</p>
+  </div>
 
   <div class="card">
     <h2>Post-League Bracket</h2>
@@ -194,8 +215,8 @@ function renderPools(pools) {
     const { rows, complete } = pools[p];
     const statusPill = complete ? '<span class="pill success">Final</span>' : (pools[p].allScored ? '<span class="pill muted">All scored \u2013 awaiting lock</span>' : '<span class="pill muted">In Progress</span>');
     return `<div class="card"><h2>Pool ${p} ${statusPill}</h2>
-      <table><thead><tr><th>#</th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Diff</th><th class="num">Pts</th></tr></thead><tbody>
-      ${rows.map(r => `<tr class="rank-${r.rank}"><td>${r.rank}</td><td>${r.teamName}${r.randomTie ? ` <span class="pill muted" title="${r.tieNote}">\ud83c\udfb2 random draw</span>` : ''}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}
+      <table><thead><tr><th class="rk">#</th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Diff</th><th class="num">Pts</th></tr></thead><tbody>
+      ${rows.map(r => `<tr class="rank-${r.rank}"><td class="rk">${r.rank}</td><td class="team">${r.teamName}${r.randomTie ? ` <span title="${r.tieNote}" style="white-space:nowrap;">\ud83c\udfb2</span>` : ''}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}
       </tbody></table>${rows.filter(r => r.randomTie).map(r => `<p class="muted" style="font-size:12px;margin:6px 0 0;">\ud83c\udfb2 <b>${r.teamName}</b>: ${r.tieNote}</p>`).join('')}</div>`;
   }).join('');
 }
