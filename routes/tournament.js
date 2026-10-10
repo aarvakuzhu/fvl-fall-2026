@@ -351,6 +351,13 @@ async function computeAwards(matches) {
       else if (/third$/i.test(pz.award)) { kind = 'auto'; team = result(byId.get(slug + '-3rd'), 'winner'); }
     }
     const pickKey = pz.award.replace(/[.$]/g, '_');
+    // "Iron Will" (Toughest Finish) = last place overall: the loser of the
+    // lowest division's 3rd-place game (16th of 16).
+    if (/iron will/i.test(pz.award) || /toughest/i.test(pz.tier || '')) {
+      const lowest = [...(cfg.tiers || [])].sort((a, b) => b.order - a.order)[0];
+      kind = 'auto';
+      team = lowest ? result(byId.get(lowest.name.toLowerCase() + '-3rd'), 'loser') : null;
+    }
     if (kind === 'manual' && picks[pickKey] != null) {
       const t = teamById.get(Number(picks[pickKey]));
       if (t) team = teamOut(t.teamId, t.name);
