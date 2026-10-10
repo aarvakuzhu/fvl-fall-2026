@@ -240,10 +240,12 @@ router.patch('/schedule/lock-pools', requireTd, async (req, res) => {
 // to just redo the whole pass each time rather than track deltas.
 router.patch('/schedule/score', requireTd, async (req, res) => {
   try {
-    const { matchId, scoreA, scoreB } = req.body || {};
-    if (!matchId || typeof scoreA !== 'number' || typeof scoreB !== 'number') {
-      return res.status(400).json({ error: 'matchId, scoreA, and scoreB (numbers) are required' });
+    const { matchId, scoreA, scoreB, clear } = req.body || {};
+    if (!matchId) return res.status(400).json({ error: 'matchId is required' });
+    if (!clear && (typeof scoreA !== 'number' || typeof scoreB !== 'number')) {
+      return res.status(400).json({ error: 'scoreA and scoreB (numbers) are required' });
     }
+    if (!clear && scoreA === scoreB) return res.status(400).json({ error: 'Ties are not allowed \u2014 enter a winner.' });
 
     const doc = await Schedule.findOne({ tournamentId: TOURNAMENT_ID });
     if (!doc) return res.status(404).json({ error: 'No schedule yet' });
@@ -251,9 +253,8 @@ router.patch('/schedule/score', requireTd, async (req, res) => {
     const match = doc.matches.find((m) => m.matchId === matchId);
     if (!match) return res.status(404).json({ error: 'No such match: ' + matchId });
 
-    match.scoreA = scoreA;
-    match.scoreB = scoreB;
-    match.completed = true;
+    if (clear) { match.scoreA = null; match.scoreB = null; match.completed = false; }
+    else { match.scoreA = scoreA; match.scoreB = scoreB; match.completed = true; }
 
     const plainMatches = doc.matches.map((m) => m.toObject());
     const standings = computePoolStandings(doc.pools, plainMatches);

@@ -72,20 +72,40 @@ function resolveTieredMatches(matches, standings) {
     return null;
   }
 
-  return matches.map((m) => {
-    if (m.phase !== 'tiered') return m;
-    if (m.teamAId !== null && m.teamBId !== null) return m; // already resolved, leave as-is (don't clobber an in-progress/completed match)
-    const a = m.sourceA ? resolveSource(m.sourceA) : null;
-    const b = m.sourceB ? resolveSource(m.sourceB) : null;
-    if (!a && !b) return m;
-    return {
-      ...m,
-      teamAId: a ? a.teamId : m.teamAId,
-      teamBId: b ? b.teamId : m.teamBId,
-      teamAName: a ? a.teamName : m.teamAName,
-      teamBName: b ? b.teamName : m.teamBName,
-    };
-  });
+  // Always re-derive every slot from its source so a corrected score
+  // propagates. If a slot's team changes, any score/referee that was based on
+  // the old team is cleared (so the TD re-scores it). Looped so a pool fix
+  // cascades pool -> semi -> 3rd/final.
+  let out = matches;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    out = out.map((m) => {
+      byMatchId.set(m.matchId, m);
+      if (m.phase !== 'tiered') return m;
+      const a = m.sourceA ? resolveSource(m.sourceA) : null;
+      const b = m.sourceB ? resolveSource(m.sourceB) : null;
+      const newAId = m.sourceA ? (a ? a.teamId : null) : m.teamAId;
+      const newBId = m.sourceB ? (b ? b.teamId : null) : m.teamBId;
+      if (newAId === m.teamAId && newBId === m.teamBId) return m;
+      changed = true;
+      const next = {
+        ...m,
+        teamAId: newAId,
+        teamBId: newBId,
+        teamAName: m.sourceA ? (a ? a.teamName : '') : m.teamAName,
+        teamBName: m.sourceB ? (b ? b.teamName : '') : m.teamBName,
+        scoreA: null,
+        scoreB: null,
+        completed: false,
+        refereeTeamId: null,
+        refereeTeamName: '',
+      };
+      byMatchId.set(m.matchId, next);
+      return next;
+    });
+    if (!changed) break;
+  }
+  return out;
 }
 
 module.exports = { computePoolStandings, resolveTieredMatches };
