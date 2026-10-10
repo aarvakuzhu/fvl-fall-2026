@@ -54,6 +54,8 @@ const ScheduleSchema = new mongoose.Schema(
     pools:        { type: [PoolAssignmentSchema], default: [] }, // the random draw result
     matches:      { type: [MatchSchema], default: [] },
     poolsLocked:  { type: Boolean, default: false }, // TD marks the pool draw final; blocks further re-randomization until unlocked
+    leagueLocked: { type: Boolean, default: false }, // TD marks pool-play scores final: runs tiebreak rules + fills the bracket; pool scores are read-only until unlocked
+    leagueLockedAt: { type: Date, default: null },
     generatedAt:  { type: Date, default: Date.now },
   },
   { timestamps: true }

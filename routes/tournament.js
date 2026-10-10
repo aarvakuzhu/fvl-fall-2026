@@ -206,7 +206,7 @@ router.post('/schedule/randomize-pools', requireTd, async (req, res) => {
 
     const doc = await Schedule.findOneAndUpdate(
       { tournamentId: TOURNAMENT_ID },
-      { $set: { tournamentId: TOURNAMENT_ID, pools, matches: poolMatches.concat(tieredMatches), generatedAt: new Date() } },
+      { $set: { tournamentId: TOURNAMENT_ID, pools, matches: poolMatches.concat(tieredMatches), leagueLocked: false, leagueLockedAt: null, generatedAt: new Date() } },
       { upsert: true, new: true }
     );
 
@@ -232,6 +232,40 @@ router.patch('/schedule/lock-pools', requireTd, async (req, res) => {
   }
 });
 
+// Lock / unlock league (pool-play) scores. Locking requires every pool game
+// scored; it runs the ranking + random-draw tiebreak rules and fills the
+// bracket from the result. Unlocking re-opens pool scores for correction and
+// blanks the bracket (any bracket scores are cleared); locking again re-runs
+// the rules from scratch.
+router.patch('/schedule/lock-league', requireTd, async (req, res) => {
+  try {
+    const locked = !!(req.body && req.body.locked);
+    const doc = await Schedule.findOne({ tournamentId: TOURNAMENT_ID });
+    if (!doc) return res.status(404).json({ error: 'No schedule yet' });
+
+    const poolGames = doc.matches.filter((m) => m.phase === 'pool');
+    if (locked) {
+      const missing = poolGames.filter((m) => !m.completed).length;
+      if (missing) return res.status(409).json({ error: missing + ' pool game(s) still unscored \u2014 score them all before locking.' });
+    }
+    doc.leagueLocked = locked;
+    doc.leagueLockedAt = locked ? new Date() : null;
+
+    const plainMatches = doc.matches.map((m) => m.toObject());
+    const standings = computePoolStandings(doc.pools, plainMatches, { locked });
+    let resolved = resolveTieredMatches(plainMatches, standings);
+    const draft = await DraftState.findOne({ draftId: OFFICIAL_DRAFT_ID }).lean();
+    const teams = (draft && draft.data && draft.data.teams) ? draft.data.teams.map((t) => ({ teamId: t.id, name: t.name })) : [];
+    if (teams.length) resolved = assignReferees(resolved, teams, { onlyMissing: true });
+    doc.matches = resolved;
+    await doc.save();
+    res.json({ ok: true, leagueLocked: doc.leagueLocked, standings });
+  } catch (err) {
+    console.error('PATCH /tournament/schedule/lock-league error:', err);
+    res.status(500).json({ error: err.message || 'Failed to update league lock' });
+  }
+});
+
 // Enter/update a score for any match (pool or tiered). Every submission
 // re-runs the full resolution pipeline: recompute pool standings -> fill
 // in any newly-resolvable tiered slots (semis from standings, 3rd/final
@@ -253,11 +287,17 @@ router.patch('/schedule/score', requireTd, async (req, res) => {
     const match = doc.matches.find((m) => m.matchId === matchId);
     if (!match) return res.status(404).json({ error: 'No such match: ' + matchId });
 
+    if (match.phase === 'pool' && doc.leagueLocked) {
+      return res.status(409).json({ error: 'League scores are locked \u2014 unlock them to edit a pool score.' });
+    }
+    if (match.phase === 'tiered' && !doc.leagueLocked) {
+      return res.status(409).json({ error: 'Lock league scores first \u2014 bracket games open once pool play is locked.' });
+    }
     if (clear) { match.scoreA = null; match.scoreB = null; match.completed = false; }
     else { match.scoreA = scoreA; match.scoreB = scoreB; match.completed = true; }
 
     const plainMatches = doc.matches.map((m) => m.toObject());
-    const standings = computePoolStandings(doc.pools, plainMatches);
+    const standings = computePoolStandings(doc.pools, plainMatches, { locked: doc.leagueLocked });
     let resolved = resolveTieredMatches(plainMatches, standings);
 
     const draft = await DraftState.findOne({ draftId: OFFICIAL_DRAFT_ID }).lean();
@@ -283,9 +323,9 @@ router.get('/standings', requireRevealedOrTd, async (req, res) => {
     const doc = await Schedule.findOne({ tournamentId: TOURNAMENT_ID }).lean();
     if (!doc || !doc.matches.length) return res.json({ pools: {}, tiered: [] });
 
-    const standings = computePoolStandings(doc.pools, doc.matches);
+    const standings = computePoolStandings(doc.pools, doc.matches, { locked: doc.leagueLocked });
     const tiered = doc.matches.filter((m) => m.phase === 'tiered');
-    res.json({ pools: standings, tiered });
+    res.json({ pools: standings, tiered, leagueLocked: !!doc.leagueLocked });
   } catch (err) {
     res.status(500).json({ error: 'Failed to compute standings' });
   }

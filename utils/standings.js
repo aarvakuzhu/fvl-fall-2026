@@ -9,7 +9,8 @@
 
 const crypto = require('crypto');
 
-function computePoolStandings(pools, matches) {
+function computePoolStandings(pools, matches, opts) {
+  const locked = !!(opts && opts.locked);
   // pools: [{pool, teamId, teamName}, ...]  (the random draw result)
   // matches: schedule matches, phase === 'pool'
   const byPool = {};
@@ -41,13 +42,14 @@ function computePoolStandings(pools, matches) {
     rows.sort((x, y) => (y.wins - x.wins) || (y.diff - x.diff) || (y.pointsFor - x.pointsFor));
     const gamesInPool = poolMatches.filter((m) => m.group === poolName).length;
     const gamesComplete = poolMatches.filter((m) => m.group === poolName && m.completed).length;
-    const poolDone = gamesInPool > 0 && gamesComplete === gamesInPool;
+    const allScored = gamesInPool > 0 && gamesComplete === gamesInPool;
+    // Ranks only become final (and feed the bracket) once the TD locks league scores.
+    const poolDone = allScored && locked;
     // Teams still level on wins, differential AND points scored: once the pool
-    // is finished, order them by a seeded random draw and flag it so the UI can
+    // is locked, order them by a seeded random draw and flag it so the UI can
     // explain it. The draw is a hash of the pool + tied teams + their stats, so
     // it is stable across page loads (no re-rolling) and only changes if a
-    // score correction changes the tie itself. While the pool is still in
-    // progress the tie is provisional: stable order by team id, not flagged.
+    // score correction changes the tie itself. Before the lock the tie is provisional: stable order by team id, not flagged.
     const key = (r) => r.wins + '|' + r.diff + '|' + r.pointsFor;
     let i = 0;
     while (i < rows.length) {
@@ -67,7 +69,7 @@ function computePoolStandings(pools, matches) {
       i = j + 1;
     }
     rows.forEach((r, i2) => { r.rank = i2 + 1; });
-    standings[poolName] = { rows, complete: poolDone };
+    standings[poolName] = { rows, complete: poolDone, allScored };
   });
 
   return standings;

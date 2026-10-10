@@ -192,7 +192,7 @@ function renderPools(pools) {
   document.getElementById('pools-empty').style.display = 'none';
   wrap.innerHTML = poolNames.map(p => {
     const { rows, complete } = pools[p];
-    const statusPill = complete ? '<span class="pill success">Final</span>' : '<span class="pill muted">In Progress</span>';
+    const statusPill = complete ? '<span class="pill success">Final</span>' : (pools[p].allScored ? '<span class="pill muted">All scored \u2013 awaiting lock</span>' : '<span class="pill muted">In Progress</span>');
     return `<div class="card"><h2>Pool ${p} ${statusPill}</h2>
       <table><thead><tr><th>#</th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Diff</th><th class="num">Pts</th></tr></thead><tbody>
       ${rows.map(r => `<tr class="rank-${r.rank}"><td>${r.rank}</td><td>${r.teamName}${r.randomTie ? ` <span class="pill muted" title="${r.tieNote}">\ud83c\udfb2 random draw</span>` : ''}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}

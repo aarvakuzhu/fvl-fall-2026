@@ -307,6 +307,11 @@ a.link:hover{text-decoration:underline;}
     <div class="card" id="schedule-empty" style="display:none;">
       <p class="hint">No schedule yet — randomize pool allocation first.</p>
     </div>
+    <div class="card" id="league-lock-card" style="display:none;">
+      <div id="league-lock-status" style="margin-bottom:8px;"></div>
+      <button class="btn" id="league-lock-btn"></button>
+      <p class="hint" style="margin-top:8px;">Locking runs the ranking rules (wins → point differential → points scored → random draw for exact ties) and fills the bracket. Unlock to correct a pool score; locking again re-checks the rules.</p>
+    </div>
     <div class="card" id="schedule-card">
       <div class="filters">
         <div class="filter-field" style="flex:1;min-width:160px;">
@@ -869,7 +874,41 @@ let refMode = 'any';
   });
 });
 
+function renderLeagueLock() {
+  const card = document.getElementById('league-lock-card');
+  if (!card) return;
+  const hasPool = SCHED.matches && SCHED.matches.some(m => m.phase === 'pool');
+  if (!IS_TD || !hasPool) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const pool = SCHED.matches.filter(m => m.phase === 'pool');
+  const done = pool.filter(m => m.completed).length;
+  const locked = !!SCHED.leagueLocked;
+  document.getElementById('league-lock-status').innerHTML =
+    (locked ? '<span class="pill gold">League Scores Locked</span>' : '<span class="pill">League Scores Open</span>') +
+    ` &nbsp; <span class="hint">${done}/${pool.length} pool games scored</span>`;
+  const btn = document.getElementById('league-lock-btn');
+  btn.textContent = locked ? '🔓 Unlock League Scores' : '🔒 Lock League Scores';
+  btn.disabled = !locked && done < pool.length;
+}
+
+async function toggleLeagueLock() {
+  const next = !SCHED.leagueLocked;
+  if (!next && !confirm('Unlock league scores? The bracket will be cleared (including any bracket scores) until you lock again.')) return;
+  if (next && !confirm('Lock league scores? This finalizes pool rankings (random draw for exact ties) and fills the bracket.')) return;
+  const res = await fetch('/api/tournament/schedule/lock-league', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+    body: JSON.stringify({ locked: next }),
+  });
+  const body = await res.json();
+  if (!res.ok) { toast('Error: ' + (body.error || res.status)); return; }
+  toast(next ? 'League scores locked.' : 'League scores unlocked.');
+  loadAll();
+}
+document.getElementById('league-lock-btn').addEventListener('click', toggleLeagueLock);
+
 function renderScheduleTable() {
+  renderLeagueLock();
   if (!SCHED || !SCHED.matches || !SCHED.matches.length) return;
   const search = document.getElementById('sched-search').value.trim().toLowerCase();
   const phase = document.getElementById('sched-phase').value;
@@ -907,7 +946,7 @@ function renderScheduleTable() {
         : `${m.teamAName} vs ${m.teamBName}`;
       const scoreCell = m.completed ? `${m.scoreA} – ${m.scoreB}` : '<span style="color:var(--muted);">—</span>';
       const refCell = m.refereeTeamName ? `<span class="pill ref">${m.refereeTeamName}</span>` : '<span style="color:var(--muted);">—</span>';
-      const canScore = IS_TD && m.teamAId !== null && m.teamBId !== null;
+      const canScore = IS_TD && m.teamAId !== null && m.teamBId !== null && (m.phase === 'pool' ? !SCHED.leagueLocked : !!SCHED.leagueLocked);
       const scoreBtn = canScore ? `<button class="btn small outline" data-score-match="${m.matchId}">${m.completed ? 'Edit' : 'Score'}</button>` + (m.completed ? ` <button class="btn small outline" data-clear-match="${m.matchId}">Clear</button>` : '') : '';
       return `<tr><td>${fmtTime12(m.timeStart)}</td><td>${m.court}</td><td>${m.label}</td><td>${teamsCell}</td><td>${scoreCell}</td><td>${refCell}</td><td>${scoreBtn}</td></tr>`;
     }).join('') +
