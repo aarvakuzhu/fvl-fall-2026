@@ -76,6 +76,7 @@ h1{font-family:var(--fd);font-size:clamp(2.2rem,7vw,3.2rem);letter-spacing:2px;c
 #theme-toggle{position:fixed;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10;}
 #theme-toggle:hover{background:var(--surface3);transform:scale(1.06);}
 </style>
+<script src="/awards.js"></script>
 </head>
 <body>
 
@@ -109,6 +110,14 @@ h1{font-family:var(--fd);font-size:clamp(2.2rem,7vw,3.2rem);letter-spacing:2px;c
       <div class="desc">Pool rankings and bracket results.</div>
       <div class="widget muted" id="widget-standings">Loading…</div>
       <div class="go">View Standings →</div>
+    </a>
+
+    <a class="hub-card" href="/standings.html#awards">
+      <div class="icon">🥇</div>
+      <div class="title">Champions &amp; Awards</div>
+      <div class="desc">Trophy and medal winners.</div>
+      <div class="widget muted" id="widget-awards">Loading…</div>
+      <div class="go">View Awards →</div>
     </a>
 
     <div class="hub-card disabled">
@@ -177,8 +186,9 @@ async function loadStandingsWidget() {
   const el = document.getElementById('widget-standings');
   try {
     const res = await fetch('/api/tournament/standings');
-    if (!res.ok) { el.textContent = 'Not started yet'; return; }
+    if (!res.ok) { el.textContent = 'Not started yet'; document.getElementById('widget-awards').textContent = 'Not started yet'; return; }
     const data = await res.json();
+    FVLAwards.preview(document.getElementById('widget-awards'), data.awards);
     const pools = data.pools || {};
     const poolNames = Object.keys(pools).sort();
     if (!poolNames.length) { el.textContent = 'Not started yet'; return; }
