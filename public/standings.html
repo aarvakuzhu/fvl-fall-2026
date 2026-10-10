@@ -65,6 +65,16 @@ th,td{vertical-align:middle;}
 th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;width:48px;padding-right:10px;}
 th.rk,td.rk{text-align:center;width:36px;}
 td.team{overflow:hidden;text-overflow:ellipsis;}
+.award-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:6px;}
+.award{border:1px solid var(--border2);border-radius:10px;padding:12px;background:var(--surface2);}
+.award.won{border-color:var(--gold);}
+.award .a-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-family:var(--fu);font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);}
+.award .a-team{font-size:1.05rem;font-weight:700;margin:6px 0 8px;color:var(--text);}
+.award .a-pending{color:var(--text2);font-size:0.85rem;margin:6px 0 2px;}
+.award .a-players{display:flex;flex-wrap:wrap;gap:6px;}
+.award .a-pl{display:flex;align-items:center;gap:5px;font-size:0.75rem;background:var(--surface3);border-radius:999px;padding:2px 8px 2px 2px;color:var(--text);}
+.award .a-pl img,.award .a-pl .ph{width:22px;height:22px;border-radius:50%;object-fit:cover;background:var(--border2);display:inline-block;}
+.award select{width:100%;margin-top:6px;padding:6px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--fu);}
 .rules ol{margin:4px 0 0 18px;padding:0;font-size:0.85rem;line-height:1.6;color:var(--text);}
 .rules p{font-size:0.82rem;line-height:1.55;color:var(--text2);margin:10px 0 0;}
 th{text-align:left;padding:6px 8px;font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--border2);}
@@ -130,6 +140,11 @@ tr.rank-1 td:first-child{color:var(--gold);font-weight:700;}
   <div class="card">
     <h2>Post-League Bracket</h2>
     <div id="tiered-wrap"><div class="empty">Not started yet.</div></div>
+  </div>
+
+  <div class="card" id="awards-card" style="display:none;">
+    <h2>🏆 Champions &amp; Awards</h2>
+    <div id="awards-wrap"></div>
   </div>
 </div>
 
@@ -200,6 +215,7 @@ async function loadAll() {
   const data = await res.json();
   renderPools(data.pools || {});
   renderTiered(data.tiered || [], data.tierSeedings || {});
+  renderAwards(data.awards, data.isTd);
 }
 
 function renderPools(pools) {
@@ -219,6 +235,36 @@ function renderPools(pools) {
       ${rows.map(r => `<tr class="rank-${r.rank}"><td class="rk">${r.rank}</td><td class="team">${r.teamName}${r.randomTie ? ` <span title="${r.tieNote}" style="white-space:nowrap;">\ud83c\udfb2</span>` : ''}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td><td class="num">${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="num">${r.pointsFor}</td></tr>`).join('')}
       </tbody></table>${rows.filter(r => r.randomTie).map(r => `<p class="muted" style="font-size:12px;margin:6px 0 0;">\ud83c\udfb2 <b>${r.teamName}</b>: ${r.tieNote}</p>`).join('')}</div>`;
   }).join('');
+}
+
+function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderAwards(awards, isTd) {
+  const card = document.getElementById('awards-card');
+  if (!awards || !awards.list || !awards.list.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const icon = (t) => /trophy/i.test(t) ? '\ud83c\udfc6' : '\ud83c\udfc5';
+  document.getElementById('awards-wrap').innerHTML = '<div class="award-grid">' + awards.list.map(a => {
+    const head = `<div class="a-head"><span>${icon(a.type)} ${esc(a.award)}</span><span>${esc(a.type)}</span></div>`;
+    if (!a.team) {
+      const pick = (a.kind === 'manual' && isTd)
+        ? `<select data-award="${esc(a.award)}"><option value="">Pick winner\u2026</option>${(awards.teams || []).map(t => `<option value="${t.teamId}">${esc(t.name)}</option>`).join('')}</select>`
+        : '';
+      return `<div class="award">${head}<div class="a-pending">${a.kind === 'manual' ? 'To be announced' : 'Awaiting final result'}</div>${pick}</div>`;
+    }
+    const players = a.team.players.map(p => `<span class="a-pl">${p.pic ? `<img src="${esc(p.pic)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;ph&quot;></span>'">` : '<span class="ph"></span>'}${esc(p.name)}${p.isCaptain ? ' \u2b50' : ''}</span>`).join('');
+    const clear = (a.kind === 'manual' && isTd) ? `<button class="pill muted" style="border:0;cursor:pointer;margin-top:8px;" data-award-clear="${esc(a.award)}">Change</button>` : '';
+    return `<div class="award won">${head}<div class="a-team">${esc(a.team.name)}</div><div class="a-players">${players}</div>${clear}</div>`;
+  }).join('') + '</div>';
+  const save = async (award, teamId) => {
+    const res = await fetch('/api/tournament/config/award-pick', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', 'x-td-token': TD_TOKEN },
+      body: JSON.stringify({ award, teamId }),
+    });
+    if (res.ok) loadAll();
+  };
+  document.querySelectorAll('[data-award]').forEach(sel => sel.addEventListener('change', () => { if (sel.value) save(sel.dataset.award, Number(sel.value)); }));
+  document.querySelectorAll('[data-award-clear]').forEach(b => b.addEventListener('click', () => save(b.dataset.awardClear, null)));
 }
 
 function renderTiered(tiered, seedings) {

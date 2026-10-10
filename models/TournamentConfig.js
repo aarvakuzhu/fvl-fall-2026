@@ -48,6 +48,7 @@ const TournamentConfigSchema = new mongoose.Schema(
     tiers:  { type: [TierSchema],  default: [] },
     prizes: { type: [PrizeSchema], default: [] },
 
+    awardPicks: { type: mongoose.Schema.Types.Mixed, default: {} }, // TD-picked winners for judgment awards: { "Iron Will": teamId }
     revealed: { type: Boolean, default: false },
   },
   { timestamps: true }

@@ -316,6 +316,66 @@ router.patch('/schedule/score', requireTd, async (req, res) => {
   }
 });
 
+// Maps each configured prize to a winning team. "<Tier> Champion" / "Runner-Up"
+// come from that tier's Final, "<Tier> Third" from its 3rd-place game; any
+// prize whose tier is not a bracket division (e.g. "Iron Will") is a judgment
+// award picked by the TD. Teams come back with their locked roster.
+async function computeAwards(matches) {
+  const cfg = await TournamentConfig.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+  if (!cfg) return { list: [], tierNames: [] };
+  const locked = await LockedRoster.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+  const teamById = new Map(((locked && locked.teams) || []).map((t) => [t.teamId, t]));
+  const tierNames = (cfg.tiers || []).map((t) => t.name);
+  const picks = cfg.awardPicks || {};
+  const byId = new Map(matches.map((m) => [m.matchId, m]));
+  const teamOut = (id, fallbackName) => {
+    const t = teamById.get(id);
+    return {
+      teamId: id,
+      name: t ? t.name : fallbackName,
+      players: t ? t.roster.map((p) => ({ name: p.name, pic: p.pic, isCaptain: p.isCaptain })) : [],
+    };
+  };
+  const result = (m, want) => {
+    if (!m || !m.completed || m.scoreA === null || m.scoreB === null) return null;
+    const aWon = m.scoreA > m.scoreB;
+    const win = want === 'winner' ? aWon : !aWon;
+    return win ? teamOut(m.teamAId, m.teamAName) : teamOut(m.teamBId, m.teamBName);
+  };
+  const list = (cfg.prizes || []).map((pz) => {
+    const slug = (pz.tier || '').toLowerCase();
+    let kind = 'manual', team = null;
+    if (tierNames.includes(pz.tier)) {
+      if (/champion$/i.test(pz.award)) { kind = 'auto'; team = result(byId.get(slug + '-final'), 'winner'); }
+      else if (/runner/i.test(pz.award)) { kind = 'auto'; team = result(byId.get(slug + '-final'), 'loser'); }
+      else if (/third$/i.test(pz.award)) { kind = 'auto'; team = result(byId.get(slug + '-3rd'), 'winner'); }
+    }
+    const pickKey = pz.award.replace(/[.$]/g, '_');
+    if (kind === 'manual' && picks[pickKey] != null) {
+      const t = teamById.get(Number(picks[pickKey]));
+      if (t) team = teamOut(t.teamId, t.name);
+    }
+    return { award: pz.award, tier: pz.tier, type: pz.type, kind, team };
+  });
+  return { list, tierNames, teams: [...teamById.values()].map((t) => ({ teamId: t.teamId, name: t.name })) };
+}
+
+// TD picks (or clears) the winner of a judgment award such as "Iron Will".
+router.patch('/config/award-pick', requireTd, async (req, res) => {
+  try {
+    const { award, teamId } = req.body || {};
+    if (!award) return res.status(400).json({ error: 'award is required' });
+    const cfg = await TournamentConfig.findOne({ tournamentId: TOURNAMENT_ID }).lean();
+    if (!cfg || !(cfg.prizes || []).some((p) => p.award === award)) return res.status(404).json({ error: 'No such award' });
+    const key = 'awardPicks.' + award.replace(/[.$]/g, '_');
+    const update = teamId == null ? { $unset: { [key]: '' } } : { $set: { [key]: Number(teamId) } };
+    await TournamentConfig.updateOne({ tournamentId: TOURNAMENT_ID }, update);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save award pick' });
+  }
+});
+
 // Standings: pool standings (computed from pool scores) + tiered bracket
 // progress. Same open-once-revealed-else-TD-only gate as everything else.
 router.get('/standings', requireRevealedOrTd, async (req, res) => {
@@ -325,7 +385,8 @@ router.get('/standings', requireRevealedOrTd, async (req, res) => {
 
     const standings = computePoolStandings(doc.pools, doc.matches, { locked: doc.leagueLocked });
     const tiered = doc.matches.filter((m) => m.phase === 'tiered');
-    res.json({ pools: standings, tiered, leagueLocked: !!doc.leagueLocked, tierSeedings: computeTierSeedings(standings) });
+    const awards = await computeAwards(doc.matches);
+    res.json({ awards, isTd: isValidToken(req.get('x-td-token')), pools: standings, tiered, leagueLocked: !!doc.leagueLocked, tierSeedings: computeTierSeedings(standings) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to compute standings' });
   }
