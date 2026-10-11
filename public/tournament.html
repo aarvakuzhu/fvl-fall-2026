@@ -144,7 +144,7 @@ body:not(.is-td) .td-only{display:none!important;}
 .team-card h3{font-family:var(--fd);font-size:1.3rem;color:var(--gold);letter-spacing:1px;margin-bottom:10px;line-height:1;}
 .team-roster-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed var(--border);font-family:var(--fu);font-size:0.8rem;}
 .sub-tag{font-size:0.55rem;font-weight:700;letter-spacing:1px;background:rgba(34,214,138,0.15);color:var(--success);padding:1px 5px;border-radius:3px;vertical-align:middle;}
-.sub-btn{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;font-size:0.8rem;padding:0 5px;margin-left:6px;}
+.sub-btn{background:none;border:1px solid var(--gold);color:var(--gold);border-radius:4px;cursor:pointer;font-family:var(--fu);font-size:0.6rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;margin-left:8px;}
 .sub-note{font-size:0.7rem;color:var(--text2);margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;}.sub-note span{color:var(--muted);}
 .team-roster-row:last-child{border-bottom:none;}
 .team-roster-row.is-captain{color:var(--gold);font-weight:700;}
@@ -620,7 +620,7 @@ function renderTeamsRosters() {
       const isMatch = search && p.name.toLowerCase().includes(search);
       return `<div class="team-roster-row${p.isCaptain ? ' is-captain' : ''}" data-player="${p.name.replace(/"/g,'&quot;')}"${isMatch ? ' style="background:rgba(240,192,64,0.12);border-radius:4px;padding-left:6px;"' : ''}>
          <span>${p.isCaptain ? '\u2605 ' : ''}${p.name}${p.isSubstitute ? ' <span class="sub-tag">SUB</span>' : ''}</span>
-         <span class="tier-tag">${p.tier}${IS_TD ? ` <button class="sub-btn" data-sub-out="${p.name.replace(/"/g,'&quot;')}" title="Replace this player">\u21c4</button>` : ''}</span>
+         <span class="tier-tag">${p.tier}${IS_TD ? ` <button class="sub-btn" data-sub-out="${p.name.replace(/"/g,'&quot;')}" title="Replace this player (no-show / withdrawal)">Replace</button>` : ''}</span>
        </div>`;
     }).join('');
     const swaps = ((LOCKED.substitutions || []).filter(x => x.teamId === t.teamId)).map(x =>
